@@ -1,13 +1,13 @@
 {
   "design": {
     "design_info": {
-      "boundary_crc": "0xC3AD17F527D5DB81",
+      "boundary_crc": "0x7E1939B554C80C59",
       "device": "xc7z010clg400-1",
       "gen_directory": "../../../../basic-project.gen/sources_1/bd/system",
       "name": "system",
       "rev_ctrl_bd_flag": "RevCtrlBdOff",
       "synth_flow_mode": "None",
-      "tool_version": "2023.1",
+      "tool_version": "2023.2",
       "validated": "true"
     },
     "design_tree": {
@@ -26,33 +26,84 @@
       },
       "AXIS_Red_Pitaya_ADC_0": "",
       "clk_wiz_0": "",
-      "topmod_0": ""
+      "topmod_0": "",
+      "xadc_wiz_0": ""
     },
     "interface_ports": {
       "Vp_Vn": {
         "mode": "Slave",
         "vlnv_bus_definition": "xilinx.com:interface:diff_analog_io:1.0",
-        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0"
+        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0",
+        "port_maps": {
+          "V_N": {
+            "physical_name": "Vp_Vn_v_n",
+            "direction": "I"
+          },
+          "V_P": {
+            "physical_name": "Vp_Vn_v_p",
+            "direction": "I"
+          }
+        }
       },
       "Vaux0": {
         "mode": "Slave",
         "vlnv_bus_definition": "xilinx.com:interface:diff_analog_io:1.0",
-        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0"
+        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0",
+        "port_maps": {
+          "V_N": {
+            "physical_name": "Vaux0_v_n",
+            "direction": "I"
+          },
+          "V_P": {
+            "physical_name": "Vaux0_v_p",
+            "direction": "I"
+          }
+        }
       },
       "Vaux1": {
         "mode": "Slave",
         "vlnv_bus_definition": "xilinx.com:interface:diff_analog_io:1.0",
-        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0"
+        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0",
+        "port_maps": {
+          "V_N": {
+            "physical_name": "Vaux1_v_n",
+            "direction": "I"
+          },
+          "V_P": {
+            "physical_name": "Vaux1_v_p",
+            "direction": "I"
+          }
+        }
       },
       "Vaux9": {
         "mode": "Slave",
         "vlnv_bus_definition": "xilinx.com:interface:diff_analog_io:1.0",
-        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0"
+        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0",
+        "port_maps": {
+          "V_N": {
+            "physical_name": "Vaux9_v_n",
+            "direction": "I"
+          },
+          "V_P": {
+            "physical_name": "Vaux9_v_p",
+            "direction": "I"
+          }
+        }
       },
       "Vaux8": {
         "mode": "Slave",
         "vlnv_bus_definition": "xilinx.com:interface:diff_analog_io:1.0",
-        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0"
+        "vlnv": "xilinx.com:interface:diff_analog_io_rtl:1.0",
+        "port_maps": {
+          "V_N": {
+            "physical_name": "Vaux8_v_n",
+            "direction": "I"
+          },
+          "V_P": {
+            "physical_name": "Vaux8_v_p",
+            "direction": "I"
+          }
+        }
       },
       "DDR": {
         "mode": "Master",
@@ -268,7 +319,7 @@
             "value_src": "default_prop"
           },
           "PHASE": {
-            "value": "0.0",
+            "value": "0.000",
             "value_src": "default_prop"
           }
         }
@@ -394,8 +445,9 @@
         "components": {
           "util_ds_buf_1": {
             "vlnv": "xilinx.com:ip:util_ds_buf:2.2",
+            "ip_revision": "31",
             "xci_name": "system_util_ds_buf_1_0",
-            "xci_path": "ip\\system_util_ds_buf_1_0\\system_util_ds_buf_1_0.xci",
+            "xci_path": "ip/system_util_ds_buf_1_0/system_util_ds_buf_1_0.xci",
             "inst_hier_path": "Utility_Buffers/util_ds_buf_1",
             "parameters": {
               "C_SIZE": {
@@ -405,8 +457,9 @@
           },
           "util_ds_buf_2": {
             "vlnv": "xilinx.com:ip:util_ds_buf:2.2",
+            "ip_revision": "31",
             "xci_name": "system_util_ds_buf_2_0",
-            "xci_path": "ip\\system_util_ds_buf_2_0\\system_util_ds_buf_2_0.xci",
+            "xci_path": "ip/system_util_ds_buf_2_0/system_util_ds_buf_2_0.xci",
             "inst_hier_path": "Utility_Buffers/util_ds_buf_2",
             "parameters": {
               "C_BUF_TYPE": {
@@ -508,8 +561,9 @@
         "components": {
           "AXI_Parse_0": {
             "vlnv": "xilinx.com:module_ref:AXI_Parse:1.0",
+            "ip_revision": "1",
             "xci_name": "system_AXI_Parse_0_0",
-            "xci_path": "ip\\system_AXI_Parse_0_0\\system_AXI_Parse_0_0.xci",
+            "xci_path": "ip/system_AXI_Parse_0_0/system_AXI_Parse_0_0.xci",
             "inst_hier_path": "PS7/AXI_Parse_0",
             "reference_info": {
               "ref_type": "hdl",
@@ -618,6 +672,10 @@
                     "value": "1",
                     "value_src": "auto"
                   },
+                  "PHASE": {
+                    "value": "0.0",
+                    "value_src": "default_prop"
+                  },
                   "CLK_DOMAIN": {
                     "value": "system_processing_system7_0_0_FCLK_CLK0",
                     "value_src": "default_prop"
@@ -631,7 +689,6 @@
                     "value_src": "const_prop"
                   }
                 },
-                "memory_map_ref": "s_axi",
                 "port_maps": {
                   "AWADDR": {
                     "physical_name": "s_axi_awaddr",
@@ -735,6 +792,10 @@
                     "value": "125000000",
                     "value_src": "user_prop"
                   },
+                  "PHASE": {
+                    "value": "0.0",
+                    "value_src": "default_prop"
+                  },
                   "CLK_DOMAIN": {
                     "value": "system_processing_system7_0_0_FCLK_CLK0",
                     "value_src": "default_prop"
@@ -780,19 +841,24 @@
           },
           "proc_sys_reset_0": {
             "vlnv": "xilinx.com:ip:proc_sys_reset:5.0",
+            "ip_revision": "14",
             "xci_name": "system_proc_sys_reset_0_0",
-            "xci_path": "ip\\system_proc_sys_reset_0_0\\system_proc_sys_reset_0_0.xci",
+            "xci_path": "ip/system_proc_sys_reset_0_0/system_proc_sys_reset_0_0.xci",
             "inst_hier_path": "PS7/proc_sys_reset_0",
             "parameters": {
               "C_AUX_RESET_HIGH": {
+                "value": "0"
+              },
+              "C_EXT_RESET_HIGH": {
                 "value": "0"
               }
             }
           },
           "processing_system7_0": {
             "vlnv": "xilinx.com:ip:processing_system7:5.5",
+            "ip_revision": "6",
             "xci_name": "system_processing_system7_0_0",
-            "xci_path": "ip\\system_processing_system7_0_0\\system_processing_system7_0_0.xci",
+            "xci_path": "ip/system_processing_system7_0_0/system_processing_system7_0_0.xci",
             "inst_hier_path": "PS7/processing_system7_0",
             "parameters": {
               "PCW_ACT_APU_PERIPHERAL_FREQMHZ": {
@@ -1293,9 +1359,6 @@
               "PCW_INCLUDE_ACP_TRANS_CHECK": {
                 "value": "0"
               },
-              "PCW_IRQ_F2P_MODE": {
-                "value": "DIRECT"
-              },
               "PCW_MIO_0_IOTYPE": {
                 "value": "LVCMOS 3.3V"
               },
@@ -1776,6 +1839,9 @@
               "PCW_M_AXI_GP0_ENABLE_STATIC_REMAP": {
                 "value": "0"
               },
+              "PCW_M_AXI_GP0_FREQMHZ": {
+                "value": "125"
+              },
               "PCW_M_AXI_GP0_ID_WIDTH": {
                 "value": "12"
               },
@@ -2084,6 +2150,9 @@
               },
               "PCW_S_AXI_HP0_DATA_WIDTH": {
                 "value": "64"
+              },
+              "PCW_S_AXI_HP0_FREQMHZ": {
+                "value": "125"
               },
               "PCW_S_AXI_HP0_ID_WIDTH": {
                 "value": "6"
@@ -2641,8 +2710,9 @@
           },
           "axi_protocol_convert_0": {
             "vlnv": "xilinx.com:ip:axi_protocol_converter:2.1",
+            "ip_revision": "29",
             "xci_name": "system_axi_protocol_convert_0_0",
-            "xci_path": "ip\\system_axi_protocol_convert_0_0\\system_axi_protocol_convert_0_0.xci",
+            "xci_path": "ip/system_axi_protocol_convert_0_0/system_axi_protocol_convert_0_0.xci",
             "inst_hier_path": "PS7/axi_protocol_convert_0",
             "parameters": {
               "ID_WIDTH": {
@@ -2724,10 +2794,10 @@
               "processing_system7_0/FCLK_CLK0",
               "FCLK_CLK0",
               "AXI_Parse_0/s_axi_aclk",
+              "axi_protocol_convert_0/aclk",
               "proc_sys_reset_0/slowest_sync_clk",
               "processing_system7_0/M_AXI_GP0_ACLK",
-              "processing_system7_0/S_AXI_HP0_ACLK",
-              "axi_protocol_convert_0/aclk"
+              "processing_system7_0/S_AXI_HP0_ACLK"
             ]
           },
           "processing_system7_0_FCLK_RESET0_N": {
@@ -2801,8 +2871,9 @@
         "components": {
           "AXIS_Red_Pitaya_DAC_0": {
             "vlnv": "xilinx.com:module_ref:AXIS_Red_Pitaya_DAC:1.0",
+            "ip_revision": "1",
             "xci_name": "system_AXIS_Red_Pitaya_DAC_0_0",
-            "xci_path": "ip\\system_AXIS_Red_Pitaya_DAC_0_0\\system_AXIS_Red_Pitaya_DAC_0_0.xci",
+            "xci_path": "ip/system_AXIS_Red_Pitaya_DAC_0_0/system_AXIS_Red_Pitaya_DAC_0_0.xci",
             "inst_hier_path": "DAC_Output/AXIS_Red_Pitaya_DAC_0",
             "reference_info": {
               "ref_type": "hdl",
@@ -2815,10 +2886,6 @@
                 "vlnv_bus_definition": "xilinx.com:interface:axis:1.0",
                 "vlnv": "xilinx.com:interface:axis_rtl:1.0",
                 "parameters": {
-                  "CLK_DOMAIN": {
-                    "value": "system_AXIS_Red_Pitaya_ADC_0_0_adc_clk",
-                    "value_src": "default_prop"
-                  },
                   "FREQ_HZ": {
                     "value": "125000000",
                     "value_src": "user_prop"
@@ -2854,6 +2921,10 @@
                   "HAS_TLAST": {
                     "value": "0",
                     "value_src": "constant"
+                  },
+                  "CLK_DOMAIN": {
+                    "value": "system_AXIS_Red_Pitaya_ADC_0_0_adc_clk",
+                    "value_src": "default_prop"
                   }
                 },
                 "port_maps": {
@@ -3002,8 +3073,9 @@
       },
       "AXIS_Red_Pitaya_ADC_0": {
         "vlnv": "xilinx.com:module_ref:AXIS_Red_Pitaya_ADC:1.0",
+        "ip_revision": "1",
         "xci_name": "system_AXIS_Red_Pitaya_ADC_0_0",
-        "xci_path": "ip\\system_AXIS_Red_Pitaya_ADC_0_0\\system_AXIS_Red_Pitaya_ADC_0_0.xci",
+        "xci_path": "ip/system_AXIS_Red_Pitaya_ADC_0_0/system_AXIS_Red_Pitaya_ADC_0_0.xci",
         "inst_hier_path": "AXIS_Red_Pitaya_ADC_0",
         "reference_info": {
           "ref_type": "hdl",
@@ -3104,8 +3176,9 @@
       },
       "clk_wiz_0": {
         "vlnv": "xilinx.com:ip:clk_wiz:6.0",
+        "ip_revision": "13",
         "xci_name": "system_clk_wiz_0_0",
-        "xci_path": "ip\\system_clk_wiz_0_0\\system_clk_wiz_0_0.xci",
+        "xci_path": "ip/system_clk_wiz_0_0/system_clk_wiz_0_0.xci",
         "inst_hier_path": "clk_wiz_0",
         "parameters": {
           "CLKIN1_JITTER_PS": {
@@ -3119,9 +3192,6 @@
           },
           "CLKOUT1_REQUESTED_OUT_FREQ": {
             "value": "250"
-          },
-          "CLK_OUT1_PORT": {
-            "value": "clk_x2_out"
           },
           "MMCM_CLKFBOUT_MULT_F": {
             "value": "8.000"
@@ -3142,8 +3212,9 @@
       },
       "topmod_0": {
         "vlnv": "xilinx.com:module_ref:topmod:1.0",
+        "ip_revision": "1",
         "xci_name": "system_topmod_0_0",
-        "xci_path": "ip\\system_topmod_0_0\\system_topmod_0_0.xci",
+        "xci_path": "ip/system_topmod_0_0/system_topmod_0_0.xci",
         "inst_hier_path": "topmod_0",
         "reference_info": {
           "ref_type": "hdl",
@@ -3301,6 +3372,30 @@
             "left": "3",
             "right": "0"
           },
+          "m_drp_den": {
+            "direction": "O"
+          },
+          "m_drp_dwe": {
+            "direction": "O"
+          },
+          "m_drp_drdy": {
+            "direction": "I"
+          },
+          "m_drp_do": {
+            "direction": "O",
+            "left": "15",
+            "right": "0"
+          },
+          "m_drp_din": {
+            "direction": "I",
+            "left": "15",
+            "right": "0"
+          },
+          "m_drp_addr": {
+            "direction": "O",
+            "left": "6",
+            "right": "0"
+          },
           "adcClk": {
             "direction": "I",
             "parameters": {
@@ -3309,7 +3404,7 @@
                 "value_src": "user_prop"
               },
               "PHASE": {
-                "value": "0.0",
+                "value": "0.000",
                 "value_src": "default_prop"
               },
               "CLK_DOMAIN": {
@@ -3322,6 +3417,108 @@
             "direction": "I",
             "left": "31",
             "right": "0"
+          }
+        }
+      },
+      "xadc_wiz_0": {
+        "vlnv": "xilinx.com:ip:xadc_wiz:3.3",
+        "ip_revision": "9",
+        "xci_name": "system_xadc_wiz_0_0",
+        "xci_path": "ip/system_xadc_wiz_0_0/system_xadc_wiz_0_0.xci",
+        "inst_hier_path": "xadc_wiz_0",
+        "parameters": {
+          "ADC_CONVERSION_RATE": {
+            "value": "1000"
+          },
+          "AVERAGE_ENABLE_VAUXP2_VAUXN2": {
+            "value": "false"
+          },
+          "CHANNEL_AVERAGING": {
+            "value": "None"
+          },
+          "CHANNEL_ENABLE_CALIBRATION": {
+            "value": "false"
+          },
+          "CHANNEL_ENABLE_TEMPERATURE": {
+            "value": "false"
+          },
+          "CHANNEL_ENABLE_VAUXP0_VAUXN0": {
+            "value": "true"
+          },
+          "CHANNEL_ENABLE_VAUXP1_VAUXN1": {
+            "value": "true"
+          },
+          "CHANNEL_ENABLE_VAUXP8_VAUXN8": {
+            "value": "true"
+          },
+          "CHANNEL_ENABLE_VAUXP9_VAUXN9": {
+            "value": "true"
+          },
+          "CHANNEL_ENABLE_VBRAM": {
+            "value": "false"
+          },
+          "CHANNEL_ENABLE_VCCAUX": {
+            "value": "false"
+          },
+          "CHANNEL_ENABLE_VCCDDRO": {
+            "value": "false"
+          },
+          "CHANNEL_ENABLE_VCCINT": {
+            "value": "false"
+          },
+          "CHANNEL_ENABLE_VCCPAUX": {
+            "value": "false"
+          },
+          "CHANNEL_ENABLE_VCCPINT": {
+            "value": "false"
+          },
+          "CHANNEL_ENABLE_VP_VN": {
+            "value": "true"
+          },
+          "DCLK_FREQUENCY": {
+            "value": "100"
+          },
+          "ENABLE_JTAG_ARBITER": {
+            "value": "false"
+          },
+          "ENABLE_RESET": {
+            "value": "false"
+          },
+          "ENABLE_VCCDDRO_ALARM": {
+            "value": "false"
+          },
+          "ENABLE_VCCPAUX_ALARM": {
+            "value": "false"
+          },
+          "ENABLE_VCCPINT_ALARM": {
+            "value": "false"
+          },
+          "EXTERNAL_MUX_CHANNEL": {
+            "value": "VP_VN"
+          },
+          "INTERFACE_SELECTION": {
+            "value": "ENABLE_DRP"
+          },
+          "OT_ALARM": {
+            "value": "false"
+          },
+          "SEQUENCER_MODE": {
+            "value": "Continuous"
+          },
+          "SINGLE_CHANNEL_SELECTION": {
+            "value": "TEMPERATURE"
+          },
+          "USER_TEMP_ALARM": {
+            "value": "false"
+          },
+          "VCCAUX_ALARM": {
+            "value": "false"
+          },
+          "VCCINT_ALARM": {
+            "value": "false"
+          },
+          "XADC_STARUP_SELECTION": {
+            "value": "channel_sequencer"
           }
         }
       }
@@ -3337,6 +3534,36 @@
         "interface_ports": [
           "FIXED_IO",
           "PS7/FIXED_IO"
+        ]
+      },
+      "Vaux0_1": {
+        "interface_ports": [
+          "Vaux0",
+          "xadc_wiz_0/Vaux0"
+        ]
+      },
+      "Vaux1_1": {
+        "interface_ports": [
+          "Vaux1",
+          "xadc_wiz_0/Vaux1"
+        ]
+      },
+      "Vaux8_1": {
+        "interface_ports": [
+          "Vaux8",
+          "xadc_wiz_0/Vaux8"
+        ]
+      },
+      "Vaux9_1": {
+        "interface_ports": [
+          "Vaux9",
+          "xadc_wiz_0/Vaux9"
+        ]
+      },
+      "Vp_Vn_1": {
+        "interface_ports": [
+          "Vp_Vn",
+          "xadc_wiz_0/Vp_Vn"
         ]
       },
       "topmod_0_m_axis": {
@@ -3394,6 +3621,7 @@
       "PS7_FCLK_CLK0": {
         "ports": [
           "PS7/FCLK_CLK0",
+          "xadc_wiz_0/dclk_in",
           "topmod_0/sysClk"
         ]
       },
@@ -3459,7 +3687,7 @@
       },
       "clk_wiz_0_clk_x2_out": {
         "ports": [
-          "clk_wiz_0/clk_x2_out",
+          "clk_wiz_0/clk_out1",
           "DAC_Output/ddr_clk",
           "topmod_0/sysClkx2"
         ]
@@ -3500,6 +3728,30 @@
           "led_o"
         ]
       },
+      "topmod_0_m_drp_daddr": {
+        "ports": [
+          "topmod_0/m_drp_addr",
+          "xadc_wiz_0/daddr_in"
+        ]
+      },
+      "topmod_0_m_drp_den": {
+        "ports": [
+          "topmod_0/m_drp_den",
+          "xadc_wiz_0/den_in"
+        ]
+      },
+      "topmod_0_m_drp_do": {
+        "ports": [
+          "topmod_0/m_drp_do",
+          "xadc_wiz_0/di_in"
+        ]
+      },
+      "topmod_0_m_drp_dwe": {
+        "ports": [
+          "topmod_0/m_drp_dwe",
+          "xadc_wiz_0/dwe_in"
+        ]
+      },
       "topmod_0_pwm_o": {
         "ports": [
           "topmod_0/pwm_o",
@@ -3516,6 +3768,18 @@
         "ports": [
           "topmod_0/resp_o",
           "PS7/resp_i"
+        ]
+      },
+      "xadc_wiz_0_do_out": {
+        "ports": [
+          "xadc_wiz_0/do_out",
+          "topmod_0/m_drp_din"
+        ]
+      },
+      "xadc_wiz_0_drdy_out": {
+        "ports": [
+          "xadc_wiz_0/drdy_out",
+          "topmod_0/m_drp_drdy"
         ]
       }
     },

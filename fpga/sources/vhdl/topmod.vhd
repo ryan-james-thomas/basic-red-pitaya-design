@@ -25,6 +25,13 @@ entity topmod is
         led_o           :   out std_logic_vector(7 downto 0);
         pwm_o           :   out std_logic_vector(3 downto 0);
         
+        m_drp_den       :   out std_logic;
+        m_drp_dwe       :   out std_logic;
+        m_drp_drdy      :   in  std_logic;
+        m_drp_do        :   out std_logic_vector(15 downto 0);
+        m_drp_din       :   in  std_logic_vector(15 downto 0);
+        m_drp_addr      :   out std_logic_vector(6 downto 0);
+        
         adcClk          :   in  std_logic;
         adcData_i       :   in  std_logic_vector(31 downto 0);
         
@@ -93,6 +100,11 @@ signal memDelay     :   unsigned(1 downto 0);
 -- PWM signals
 --
 signal pwm_data     :   t_pwm_array(3 downto 0); 
+--
+-- XADC interface signals
+--
+signal drp_status   :   std_logic;
+signal drp_data     :   std_logic_vector(m_drp_din'length - 1 downto 0);
 
 begin
 
@@ -154,11 +166,16 @@ begin
         dina <= (others => '0');
         memDelay <= (others => '0');
         wea <= "0";
+        m_drp_den <= '0';
+        m_drp_dwe <= '0';
+        m_drp_addr <= (others => '0');
+        m_drp_do <= (others => '0');
     elsif rising_edge(sysClk) then
         FSM: case(comState) is
             when idle =>
                 triggers <= (others => '0');
                 reset <= '0';
+                drp_status <= '0';
                 bus_s.resp <= "00";
                 memDelay <= "00";
                 if bus_m.valid(0) = '1' then
@@ -211,7 +228,35 @@ begin
                                 comState <= finishing;
                             end if;
                         end if;
-                    
+                        
+                    --
+                    -- Read/write from XADC via DRP
+                    when X"02" =>
+                        m_drp_addr <= std_logic_vector(bus_m.addr(m_drp_addr'length + 1 downto 2));
+                        if bus_m.valid(1) = '0' then
+                            --
+                            -- If writing data, route input address and data to DRP
+                            --
+                            comState <= finishing;
+                            m_drp_do <= bus_m.data(m_drp_do'length - 1 downto 0);
+                            m_drp_dwe <= '1';
+                            m_drp_den <= '1';
+                        else
+                            -- 
+                            -- If reading from memory, we need to wait for the m_drp_drdy signal
+                            --
+                            if m_drp_drdy = '1' then
+                                comState <= finishing;
+                                m_drp_den <= '0';
+                                drp_data <= m_drp_din;
+                            elsif drp_status = '0' then
+                                m_drp_den <= '1';
+                                drp_status <= '1';
+                            else
+                                m_drp_den <= '0';
+                            end if;
+                        end if;
+
                     when others => 
                         comState <= finishing;
                         bus_s.resp <= "11";
@@ -219,6 +264,8 @@ begin
             when finishing =>
                 wea <= "0";
                 comState <= idle;
+                m_drp_dwe <= '0';
+                m_drp_den <= '0';
 
             when others => comState <= idle;
         end case;
