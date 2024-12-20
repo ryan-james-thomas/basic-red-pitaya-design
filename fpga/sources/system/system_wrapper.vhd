@@ -53,7 +53,17 @@ entity system_wrapper is
     daisy_p_o : out STD_LOGIC_VECTOR ( 1 downto 0 );
     exp_n_tri_io : in STD_LOGIC_VECTOR ( 7 downto 0 );
     exp_p_tri_io : out STD_LOGIC_VECTOR ( 7 downto 0 );
-    led_o : out STD_LOGIC_VECTOR ( 7 downto 0 )
+    led_o : out STD_LOGIC_VECTOR ( 7 downto 0 );
+    Vaux0_v_n : in STD_LOGIC;
+    Vaux0_v_p : in STD_LOGIC;
+    Vaux1_v_n : in STD_LOGIC;
+    Vaux1_v_p : in STD_LOGIC;
+    Vaux8_v_n : in STD_LOGIC;
+    Vaux8_v_p : in STD_LOGIC;
+    Vaux9_v_n : in STD_LOGIC;
+    Vaux9_v_p : in STD_LOGIC;
+    Vp_Vn_v_n : in STD_LOGIC;
+    Vp_Vn_v_p : in STD_LOGIC
   );
 end system_wrapper;
 
@@ -100,7 +110,17 @@ architecture STRUCTURE of system_wrapper is
     FIXED_IO_ddr_vrp : inout STD_LOGIC;
     FIXED_IO_ps_srstb : inout STD_LOGIC;
     FIXED_IO_ps_clk : inout STD_LOGIC;
-    FIXED_IO_ps_porb : inout STD_LOGIC
+    FIXED_IO_ps_porb : inout STD_LOGIC;
+    Vp_Vn_v_n : in STD_LOGIC;
+    Vp_Vn_v_p : in STD_LOGIC;
+    Vaux0_v_n : in STD_LOGIC;
+    Vaux0_v_p : in STD_LOGIC;
+    Vaux1_v_n : in STD_LOGIC;
+    Vaux1_v_p : in STD_LOGIC;
+    Vaux9_v_n : in STD_LOGIC;
+    Vaux9_v_p : in STD_LOGIC;
+    Vaux8_v_n : in STD_LOGIC;
+    Vaux8_v_p : in STD_LOGIC
   );
   end component system;
 begin
@@ -146,6 +166,16 @@ system_i: component system
       daisy_p_o(1 downto 0) => daisy_p_o(1 downto 0),
       exp_n_tri_io(7 downto 0) => exp_n_tri_io(7 downto 0),
       exp_p_tri_io(7 downto 0) => exp_p_tri_io(7 downto 0),
-      led_o(7 downto 0) => led_o(7 downto 0)
+      led_o(7 downto 0) => led_o(7 downto 0),
+      Vaux0_v_n => Vaux0_v_n,
+      Vaux0_v_p => Vaux0_v_p,
+      Vaux1_v_n => Vaux1_v_n,
+      Vaux1_v_p => Vaux1_v_p,
+      Vaux8_v_n => Vaux8_v_n,
+      Vaux8_v_p => Vaux8_v_p,
+      Vaux9_v_n => Vaux9_v_n,
+      Vaux9_v_p => Vaux9_v_p,
+      Vp_Vn_v_n => Vp_Vn_v_n,
+      Vp_Vn_v_p => Vp_Vn_v_p
     );
 end STRUCTURE;

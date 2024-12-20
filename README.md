@@ -1,25 +1,32 @@
 # Use
 
-This is a bare-bones Vivado project for the Red-Pitaya/STEMlab boards.  It is meant to be a starting point for custom designs with the Red Pitaya.  HDL code is written in VHDL, and it includes modules for reading from the ADCs, writing to the DACs, writing to the PWM outputs, as well as a simplified interface for reading/writing to the device via the AXI interface.
+This is a bare-bones Vivado project for the Red-Pitaya/STEMlab boards.  It is meant to be a starting point for custom designs with the Red Pitaya.  HDL code is written in VHDL, and it includes modules for reading from the ADCs, writing to the DACs, writing to the PWM outputs, reading from the "slow" ADC inputs using the programmable logic, as well as a simplified interface for reading/writing to the device via the AXI interface.
 
-Included in the software directory is some Python code that can be run from the command line on the Red Pitaya which will start a simple TCP/IP socket server that can be used to send and receive data from a remote computer.  See the "set up" section for getting things working.
+This project has been written to interface with a personal computer (PC) running MATLAB via a TCP/IP socket server running on the Red Pitaya (RP).  The necessary MATLAB class definitions for your PC and Python code for running on the RP can be found in [this interface repository](https://github.com/ryan-james-thomas/red-pitaya-interface).  See the "Set up" section below or the README in the interface repository.
 
-Once the Python server is running, the suite of MATLAB classes can be used to send and receive data.  Create an instance of
+
+Once the FPGA bitstream is uploaded and the Python server is running, the suite of MATLAB classes can be used to send and receive data.  Create an instance of
 ```
 dev = DeviceControl(ip_addr);
 ```
-where `ip_addr` is the IP address of the Red Pitaya.  You can then fetch data using `dev.fetch` and upload data using `dev.upload`.  Refer to the code to see how this works.
+where `ip_addr` is the IP address of the Red Pitaya; you can also use the hostname if you prefer.  You can then fetch data using `dev.fetch` and upload data using `dev.upload`.  Refer to the code to see how this works.
 
 DAC outputs can be written using `dev.dac(<index>).set(<value>).write` where `<index>` is either 1 or 2 and `<value>` is a value in volts between -1 V and 1 V. 
 
+Fast ADC inputs can be read using `dev.adc(<index>).read` where `<index>` is either 1 or 2.  The value in volts is then stored in `dev.adc(<index>).value`.  Make sure that `dev.jumpers` is set correctly.
+
 PWM outputs can be written using `dev.pwm(<index>).set(<value>).write` where `<index>` is an integer between 1 and 4 and `<value>` is a value in volts between 0 and 1.62 V.  The PWM outputs are clocked at 250 MHz and the data for each output are 8 bits long leading to a PWM period of $250 \textrm{MHz}/2^8 \approx 1 MHz$.  The hardware includes single-pole low-pass filters with a corner frequency of about 100 kHz, and these show significant ripple.  Use of additional filters is necessary to get a good DC signal.   
 
-For testing purposes, a block memory element with 256 address spaces and a write/read depth of 32 has been included to show how to write to and read from a memory element.  The C program 'testMemory.c' can be used for this purpose. Copy it to the Red Pitaya, compile it using the command 'gcc -o testMemory testMemory.c', and then run it using './testMemory 10' to write to and then read from 10 addresses in sequence.  You can replace '10' with any integer up to 255.
+Slow ADC inputs can be read using `dev.slow_adcs(<index>).read` where `<index>` is an integer between 1 and 4.  The value in volts is then stored in `dev.slow_adcs(<index>).value`.  
+
+You can query the device status as read through the XADC system, which includes temperature and supply voltages, using `dev.get_xadc_status`.
+
+For testing purposes, a block memory element with 256 address spaces and a write/read data with of 32 has been included to show how to write to and read from a memory element.  The C program 'testMemory.c' can be used for this purpose. Copy it to the Red Pitaya, compile it using the command 'gcc -o testMemory testMemory.c', and then run it using './testMemory 10' to write to and then read from 10 addresses in sequence.  You can replace '10' with any integer up to 255.  You can also use the methods `dev.memwrite(<data>)` and `dev.memread(<num_samples>)` to test it with the MATLAB interface.
 
 
 # Creating the project
 
-When creating the project, make sure to use the correct Vivado version.  The Git version v2020.2 works for Vivado 2020.2, while the version v2023.1 works for Vivado 2023.1.  The TCL script used to create the Vivado projects are unfortunately not interchangeable.
+When creating the project, make sure to use the correct Vivado version.  The Git version v2020.2 works for Vivado 2020.2, while the version v2023.1 works for Vivado 2023.1, and so on.  The TCL script used to create the Vivado projects are unfortunately not interchangeable.
 
 To create the project, clone the repository to a directory on your computer, open Vivado, navigate to the fpga/ directory (use `pwd` in the TCL console to determine your current directory and `cd` to navigate, just like in Bash), and then run `source make-project.tcl` which will create the project files under the directory `basic-project`.  If you want a different file name, open the `make-project.tcl` file and edit the line under the comment `# Set the project name`.  This should create the project with no errors.  It may not correctly assign the AXI addresses, so you will need to open the address editor and assign the `PS7/AXI_Parse_0/s_axi` interface the address range `0x4000_000` to `0x7fff_ffff`.
 
@@ -27,13 +34,15 @@ To create the project, clone the repository to a directory on your computer, ope
 
 ## Starting the Red Pitaya
 
-Connect the Red Pitaya (RP) to power via the USB connector labelled PWR (on the underside of the board), and connect the device to the local network using an ethernet cable.  Log into the device using SSH with the user name `root` and password `root` using the hostname `rp-{MAC}.local` where `{MAC}` is the last 6 characters in the device's MAC address - this will be printed on the ethernet connector of the device.
+Connect the Red Pitaya (RP) to power via the USB connector labelled PWR (on the underside of the board, it's the connector closest to the edge of the board), and connect the device to the local network using an ethernet cable.  Log into the device using SSH with the user name `root` and password `root` using the hostname `rp-{MAC}.local` where `{MAC}` is the last 6 characters in the device's MAC address - this will be printed on the ethernet connector of the device.
 
 ### First use
 
-Copy over the files in the 'software/' directory ending in '.py', the file 'get_ip.sh', and the file 'saveScanData.c' using either `scp` (from a terminal on your computer) or your favourite GUI (I recommend WinSCP for Windows).  You will also need to copy over the file 'fpga/system_wrapper.bit' which is the device configuration file.  If using `scp` from the command line, navigate to the main project directory on your computer and use
+Clone the interface repository to your computer, and then copy over all files in that directory ending in '.py' and '.sh' using either `scp` (from a terminal on your computer) or your favourite GUI (I recommend WinSCP for Windows).  Make sure to add this directory to your MATLAB path.
+
+You will also need to copy over the file 'fpga/system_wrapper.bit' which is the device configuration file.  If using `scp` from the command line, navigate to the main project directory on your computer and use
 ```
-scp fpga/system_wrapper.bit software/*.py software/get_ip.sh software/*.c root@rp-{MAC}.local:/root/
+scp fpga/system_wrapper.bit software/*.c root@rp-{MAC}.local:/root/
 ```
 and give your password as necessary.  You can move these files to a different directory on the RP after they have been copied.
 
@@ -55,9 +64,9 @@ root@rp-f0919a:~# ip addr
 3: sit0@NONE: <NOARP> mtu 1480 qdisc noop state DOWN group default qlen 1
     link/sit 0.0.0.0 brd 0.0.0.0
 ```
-In this case the one we want is the address `192.168.1.109`.  In this case, `get_ip.sh` will work because it looks for an IP address starting with `192.168`.  If your IP address starts with something else, you will need to edit the `get_ip.sh` file and change the numbers to reflect your particular network.
+In this case the one we want is the address `192.168.1.109`.  In this case, `get_ip.sh` will work because it looks for an IP address with the 'global' tag.  If you have your RP connectly directly to your PC, then you will need to use the relevant IP address: in the above example, it is the address '169.254.176.82'.  
 
-Finally, compile the C programs `fetchRAM.c` and `fetchFIFO.c` using `gcc -o fetchRAM fetchRAM.c` and `gcc -o fetchFIFO fetchFIFO.c`.  These will automatically be executable.
+Finally, compile the C program `testMemory.c` using `gcc -o testMemory testMemory.c`.  This will automatically be executable.
 
 ### After a reboot or power-on
 

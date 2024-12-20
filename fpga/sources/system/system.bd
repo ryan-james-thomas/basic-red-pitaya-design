@@ -3205,6 +3205,9 @@
           "PRIM_IN_FREQ": {
             "value": "125"
           },
+          "PRIM_SOURCE": {
+            "value": "Global_buffer"
+          },
           "USE_RESET": {
             "value": "false"
           }
@@ -3300,7 +3303,24 @@
               }
             }
           },
-          "sysClkx2": {
+          "adcClk": {
+            "direction": "I",
+            "parameters": {
+              "FREQ_HZ": {
+                "value": "125000000",
+                "value_src": "user_prop"
+              },
+              "PHASE": {
+                "value": "0.000",
+                "value_src": "default_prop"
+              },
+              "CLK_DOMAIN": {
+                "value": "system_AXIS_Red_Pitaya_ADC_0_0_adc_clk",
+                "value_src": "default_prop"
+              }
+            }
+          },
+          "adcClkx2": {
             "direction": "I",
             "parameters": {
               "FREQ_HZ": {
@@ -3327,11 +3347,6 @@
               }
             }
           },
-          "ext_i": {
-            "direction": "I",
-            "left": "7",
-            "right": "0"
-          },
           "addr_i": {
             "direction": "I",
             "left": "31",
@@ -3355,21 +3370,6 @@
           "resp_o": {
             "direction": "O",
             "left": "1",
-            "right": "0"
-          },
-          "ext_o": {
-            "direction": "O",
-            "left": "7",
-            "right": "0"
-          },
-          "led_o": {
-            "direction": "O",
-            "left": "7",
-            "right": "0"
-          },
-          "pwm_o": {
-            "direction": "O",
-            "left": "3",
             "right": "0"
           },
           "m_drp_den": {
@@ -3396,22 +3396,25 @@
             "left": "6",
             "right": "0"
           },
-          "adcClk": {
+          "ext_i": {
             "direction": "I",
-            "parameters": {
-              "FREQ_HZ": {
-                "value": "125000000",
-                "value_src": "user_prop"
-              },
-              "PHASE": {
-                "value": "0.000",
-                "value_src": "default_prop"
-              },
-              "CLK_DOMAIN": {
-                "value": "system_AXIS_Red_Pitaya_ADC_0_0_adc_clk",
-                "value_src": "default_prop"
-              }
-            }
+            "left": "7",
+            "right": "0"
+          },
+          "ext_o": {
+            "direction": "O",
+            "left": "7",
+            "right": "0"
+          },
+          "led_o": {
+            "direction": "O",
+            "left": "7",
+            "right": "0"
+          },
+          "pwm_o": {
+            "direction": "O",
+            "left": "3",
+            "right": "0"
           },
           "adcData_i": {
             "direction": "I",
@@ -3437,10 +3440,10 @@
             "value": "None"
           },
           "CHANNEL_ENABLE_CALIBRATION": {
-            "value": "false"
+            "value": "true"
           },
           "CHANNEL_ENABLE_TEMPERATURE": {
-            "value": "false"
+            "value": "true"
           },
           "CHANNEL_ENABLE_VAUXP0_VAUXN0": {
             "value": "true"
@@ -3455,28 +3458,34 @@
             "value": "true"
           },
           "CHANNEL_ENABLE_VBRAM": {
-            "value": "false"
+            "value": "true"
           },
           "CHANNEL_ENABLE_VCCAUX": {
-            "value": "false"
+            "value": "true"
           },
           "CHANNEL_ENABLE_VCCDDRO": {
-            "value": "false"
+            "value": "true"
           },
           "CHANNEL_ENABLE_VCCINT": {
-            "value": "false"
+            "value": "true"
           },
           "CHANNEL_ENABLE_VCCPAUX": {
-            "value": "false"
+            "value": "true"
           },
           "CHANNEL_ENABLE_VCCPINT": {
-            "value": "false"
+            "value": "true"
           },
           "CHANNEL_ENABLE_VP_VN": {
             "value": "true"
           },
           "DCLK_FREQUENCY": {
-            "value": "100"
+            "value": "125"
+          },
+          "ENABLE_CALIBRATION_AVERAGING": {
+            "value": "true"
+          },
+          "ENABLE_EXTERNAL_MUX": {
+            "value": "false"
           },
           "ENABLE_JTAG_ARBITER": {
             "value": "false"
@@ -3485,13 +3494,13 @@
             "value": "false"
           },
           "ENABLE_VCCDDRO_ALARM": {
-            "value": "false"
+            "value": "true"
           },
           "ENABLE_VCCPAUX_ALARM": {
-            "value": "false"
+            "value": "true"
           },
           "ENABLE_VCCPINT_ALARM": {
-            "value": "false"
+            "value": "true"
           },
           "EXTERNAL_MUX_CHANNEL": {
             "value": "VP_VN"
@@ -3500,25 +3509,25 @@
             "value": "ENABLE_DRP"
           },
           "OT_ALARM": {
-            "value": "false"
+            "value": "true"
           },
           "SEQUENCER_MODE": {
-            "value": "Continuous"
+            "value": "Off"
           },
           "SINGLE_CHANNEL_SELECTION": {
             "value": "TEMPERATURE"
           },
           "USER_TEMP_ALARM": {
-            "value": "false"
+            "value": "true"
           },
           "VCCAUX_ALARM": {
-            "value": "false"
+            "value": "true"
           },
           "VCCINT_ALARM": {
-            "value": "false"
+            "value": "true"
           },
           "XADC_STARUP_SELECTION": {
-            "value": "channel_sequencer"
+            "value": "independent_adc"
           }
         }
       }
@@ -3689,7 +3698,7 @@
         "ports": [
           "clk_wiz_0/clk_out1",
           "DAC_Output/ddr_clk",
-          "topmod_0/sysClkx2"
+          "topmod_0/adcClkx2"
         ]
       },
       "clk_wiz_0_locked": {
