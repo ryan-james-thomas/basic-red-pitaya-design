@@ -96,6 +96,14 @@ procedure readOnly(
     signal state    :   inout   t_status;
     signal param    :   in      std_logic_vector);	
     
+procedure rw(
+    signal bus_i    :   in      t_axi_bus_master;
+    signal bus_o    :   out     t_axi_bus_slave;
+    signal state    :   inout   t_status;
+    signal drp_p    :   inout   t_drp_bus_primary;
+    signal drp_s    :   in      t_drp_bus_secondary);
+    
+    
 end AXI_Bus_Package;
 
 --------------------------------------------------------------------------------------------------
@@ -211,4 +219,53 @@ begin
         end if;
     end if;
 end readOnly;
+
+procedure rw(
+    signal bus_i    :   in      t_axi_bus_master;
+    signal bus_o    :   out     t_axi_bus_slave;
+    signal state    :   inout   t_status;
+    signal drp_p    :   inout   t_drp_bus_primary;
+    signal drp_s    :   in      t_drp_bus_secondary) is 
+begin
+
+    drp_p.addr <= std_logic_vector(bus_i.addr(drp_p.addr'length + 1 downto 2));
+    if bus_i.valid(1) = '0' then
+        --
+        -- If writing data, route input address and data to DRP
+        --
+        state <= finishing;
+        drp_p.dout <= bus_i.data(drp_p.dout'length -1 downto 0);
+        drp_p.dwe <= '1';
+        drp_p.den <= '1';
+    else
+        --
+        -- If reading from memory, we need to wait for the drdy signal
+        --
+        if drp_s.drdy = '1' then
+            -- Return with no error when DRDY is high
+            drp_p.den <= '0';
+            bus_o.data(drp_s.din'left downto 0) <= drp_s.din;
+            bus_o.data(AXI_DATA_WIDTH - 1 downto drp_s.din'length) <= (others => '0');
+            bus_o.resp <= "01";
+            state <= finishing;
+        elsif drp_p.den = '0' then
+            -- Raise the DEN signal to tell the memory to read
+            drp_p.den <= '1';
+            drp_p.count <= (others => '0');
+        elsif drp_p.count < DRP_TIMEOUT then
+            -- We have a timer to make sure that we don't hang forever if we make a mistake with the address
+            drp_p.den <= '0';
+            drp_p.count <= drp_p.count + 1;
+        else
+            -- If we time out, then send a bus error and exit
+            state <= finishing;
+            bus_o.resp <= "11";
+            bus_o.data <= (others => '0');
+        end if;
+    end if;
+
+end rw;
+
+
+
 end AXI_Bus_Package;

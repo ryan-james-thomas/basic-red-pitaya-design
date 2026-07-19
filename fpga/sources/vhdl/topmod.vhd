@@ -121,10 +121,8 @@ signal pwm_data     :   t_pwm_array(3 downto 0);
 --
 -- XADC interface signals
 --
-signal drp_status   :   std_logic;
-signal drp_data     :   std_logic_vector(m_drp_din'length - 1 downto 0);
-signal drp_count    :   unsigned(15 downto 0);
-constant DRP_TIMEOUT:   unsigned(drp_count'left downto 0)   :=  (others => '1');    --This is about 500 us for a 125 MHz clock
+signal drp_p        :   t_drp_bus_primary;
+signal drp_s        :   t_drp_bus_secondary;
 
 begin
 
@@ -187,6 +185,13 @@ bus_m.data <= writeData_i;
 readData_o <= bus_s.data;
 resp_o <= bus_s.resp;
 
+m_drp_den <= drp_p.den;
+m_drp_dwe <= drp_p.dwe;
+m_drp_do <= drp_p.dout;
+m_drp_addr <= drp_p.addr;
+drp_s.din <= m_drp_din;
+drp_s.drdy <= m_drp_drdy;
+
 Parse: process(sysClk,aresetn) is
 begin
     if aresetn = '0' then
@@ -204,10 +209,7 @@ begin
         dina <= (others => '0');
         memDelay <= (others => '0');
         wea <= "0";
-        m_drp_den <= '0';
-        m_drp_dwe <= '0';
-        m_drp_addr <= (others => '0');
-        m_drp_do <= (others => '0');
+        drp_p <= DRP_BUS_PRIMARY_INIT;
     elsif rising_edge(sysClk) then
         FSM: case(comState) is
             --
@@ -216,8 +218,7 @@ begin
             when idle =>
                 triggers <= (others => '0');
                 reset <= '0';
-                drp_status <= '0';
-                drp_count <= (others => '0');
+                drp_p.count <= (others => '0');
                 bus_s.resp <= "00";
                 memDelay <= "00";
                 if bus_m.valid(0) = '1' then
@@ -275,44 +276,7 @@ begin
                     --
                     -- Read/write from XADC via DRP
                     --
-                    when X"02" =>
-                        m_drp_addr <= std_logic_vector(bus_m.addr(m_drp_addr'length + 1 downto 2));
-                        if bus_m.valid(1) = '0' then
-                            --
-                            -- If writing data, route input address and data to DRP
-                            --
-                            comState <= finishing;
-                            m_drp_do <= bus_m.data(m_drp_do'length - 1 downto 0);
-                            m_drp_dwe <= '1';
-                            m_drp_den <= '1';
-                        else
-                            -- 
-                            -- If reading from memory, we need to wait for the m_drp_drdy signal
-                            --
-                            if m_drp_drdy = '1' then
-                                -- Return with no error when DRDY is high
-                                m_drp_den <= '0';
-                                bus_s.data(m_drp_din'left downto 0) <= m_drp_din;
-                                bus_s.data(AXI_DATA_WIDTH - 1 downto m_drp_din'length) <= (others => '0');
-                                bus_s.resp <= "01";
-                                comState <= finishing;
-                            elsif drp_status = '0' then
-                                -- This raises the DEN signal to tell the memory to read
-                                m_drp_den <= '1';
-                                drp_status <= '1';
-                                drp_count <= (others => '0');
-                            elsif drp_count < DRP_TIMEOUT then
-                                -- We have a timer to make sure that we don't hang forever if
-                                -- we make a mistake in the address space
-                                m_drp_den <= '0';
-                                drp_count <= drp_count + 1;
-                            else
-                                -- If we time out, then send a bus error and exit
-                                comState <= finishing;
-                                bus_s.resp <= "11";
-                                bus_s.data <= (others => '0');
-                            end if;
-                        end if;
+                    when X"02" => rw(bus_m,bus_s,comState,drp_p,drp_s);
 
                     when others => 
                         comState <= finishing;
@@ -324,8 +288,8 @@ begin
             when finishing =>
                 wea <= "0";
                 comState <= idle;
-                m_drp_dwe <= '0';
-                m_drp_den <= '0';
+                drp_p.dwe <= '0';
+                drp_p.den <= '0';
 
             when others => comState <= idle;
         end case;

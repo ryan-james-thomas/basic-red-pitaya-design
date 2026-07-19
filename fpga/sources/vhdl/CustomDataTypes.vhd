@@ -89,34 +89,28 @@ constant INIT_MEM_BUS_SLAVE     :   t_mem_bus_slave :=  (data   =>  (others => '
                                                          status =>  idle);
 constant INIT_MEM_BUS           :   t_mem_bus       :=  (m  =>  INIT_MEM_BUS_MASTER,
                                                          s  =>  INIT_MEM_BUS_SLAVE);
+--
+-- DRP types and constants
+--
+constant DRP_ADDR_WIDTH :   natural :=  7;
+constant DRP_DATA_WIDTH :   natural :=  16;
+constant DRP_TIMEOUT    :   unsigned(27 downto 0)   :=  (others => '1');
+type t_drp_bus_primary is record
+    den     :   std_logic;
+    dwe     :   std_logic;
+    dout    :   std_logic_vector(DRP_DATA_WIDTH - 1 downto 0);
+    addr    :   std_logic_vector(DRP_ADDR_WIDTH - 1 downto 0);
+    count   :   unsigned(DRP_TIMEOUT'length - 1 downto 0);
+end record t_drp_bus_primary;
 
+type t_drp_bus_secondary is record
+    din     :   std_logic_vector(DRP_DATA_WIDTH - 1 downto 0);
+    drdy    :   std_logic;
+end record t_drp_bus_secondary;
 
-type t_control is record
-    enable  :   std_logic;
-    start   :   std_logic;
-    stop    :   std_logic;
-    debug   :   std_logic_vector(3 downto 0);
-end record t_control;
+constant DRP_BUS_PRIMARY_INIT   :   t_drp_bus_primary   :=  (den => '0', dwe => '0', dout => (others => '0'), addr => (others => '0'), count => (others => '0'));
+constant DRP_BUS_SECONDARY_INIT :   t_drp_bus_secondary :=  (din => (others => '0'), drdy => '0');
 
-constant INIT_CONTROL_DISABLED      :   t_control       :=  (enable =>  '0',
-                                                             start  =>  '0',
-                                                             stop   =>  '0',
-                                                             debug  =>  (others => '0'));
-
-constant INIT_CONTROL_ENABLED       :   t_control       :=  (enable =>  '1',
-                                                             start  =>  '0',
-                                                             stop   =>  '0',
-                                                             debug  =>  (others => '0'));
-
-type t_module_status is record
-    started :   std_logic;
-    running :   std_logic;
-    done    :   std_logic;
-end record t_module_status;
-	
-constant INIT_MODULE_STATUS     :   t_module_status :=  (started    =>  '0',
-                                                         running    =>  '0',
-                                                         done       =>  '0');
 end CustomDataTypes;
 
 --------------------------------------------------------------------------------------------------
