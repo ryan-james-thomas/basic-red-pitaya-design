@@ -102,7 +102,13 @@ procedure rw(
     signal state    :   inout   t_status;
     signal drp_p    :   inout   t_drp_bus_primary;
     signal drp_s    :   in      t_drp_bus_secondary);
-    
+
+procedure rw_sub_mod(
+    signal bus_m        :   in      t_axi_bus_master;
+    signal bus_s        :   out     t_axi_bus_slave;
+    signal state        :   inout   t_status;
+    signal sub_bus_m    :   inout   t_axi_bus_master;
+    signal sub_bus_s    :   in      t_axi_bus_slave);    
     
 end AXI_Bus_Package;
 
@@ -266,6 +272,21 @@ begin
 
 end rw;
 
+procedure rw_sub_mod(
+    signal bus_m        :   in      t_axi_bus_master;
+    signal bus_s        :   out     t_axi_bus_slave;
+    signal state        :   inout   t_status;
+    signal sub_bus_m    :   inout   t_axi_bus_master;
+    signal sub_bus_s    :   in      t_axi_bus_slave) is
+begin
+    if sub_bus_s.resp = "00" then
+        sub_bus_m <= bus_m;
+    else
+        sub_bus_m <= INIT_AXI_BUS_MASTER;
+        bus_s <= sub_bus_s;
+        state <= finishing;
+   end if;     
+end rw_sub_mod;
 
 
 end AXI_Bus_Package;

@@ -5,3 +5,5 @@ sources/system/ip/
 sources/system/ipshared/
 sources/system/ui
 vivado*
+
+*.bif

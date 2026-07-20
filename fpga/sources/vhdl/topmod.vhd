@@ -93,6 +93,16 @@ component PWM_Generator is
     );
 end component;
 
+component TestSubModule is
+    port (
+        clk     :   in  std_logic;
+        aresetn :   in  std_logic;
+
+        bus_m   :   in  t_axi_bus_master;
+        bus_s   :   out t_axi_bus_slave
+    );
+end component;
+
 --
 -- AXI communication signals
 --
@@ -123,6 +133,15 @@ signal pwm_data     :   t_pwm_array(3 downto 0);
 --
 signal drp_p        :   t_drp_bus_primary;
 signal drp_s        :   t_drp_bus_secondary;
+
+--
+-- Submodule signals
+--
+type t_axi_bus_master_array is array(natural range <>) of t_axi_bus_master;
+type t_axi_bus_slave_array is array(natural range <>) of t_axi_bus_slave;
+
+signal subs_bus_m   :   t_axi_bus_master_array(1 downto 0);
+signal subs_bus_s   :   t_axi_bus_slave_array(1 downto 0);
 
 begin
 
@@ -177,6 +196,18 @@ port map(
     pwm_o   =>  pwm_o
 );
 --
+-- Submodule testing
+--
+SubModuleGen: for I in 0 to subs_bus_m'length - 1 generate
+    SubModuleX: TestSubModule
+    port map(
+        clk     =>  sysClk,
+        aresetn =>  aresetn,
+        bus_m   =>  subs_bus_m(I),
+        bus_s   =>  subs_bus_s(I)
+    );
+end generate SubModuleGen;
+--
 -- AXI communication routing - connects bus objects to std_logic signals
 --
 bus_m.addr <= addr_i;
@@ -210,6 +241,9 @@ begin
         memDelay <= (others => '0');
         wea <= "0";
         drp_p <= DRP_BUS_PRIMARY_INIT;
+        for I in 0 to subs_bus_m'length - 1 loop
+            subs_bus_m(I) <= INIT_AXI_BUS_MASTER;
+        end loop;
     elsif rising_edge(sysClk) then
         FSM: case(comState) is
             --
@@ -220,6 +254,9 @@ begin
                 reset <= '0';
                 drp_p.count <= (others => '0');
                 bus_s.resp <= "00";
+                for I in 0 to subs_bus_m'length - 1 loop
+                    subs_bus_m(I) <= INIT_AXI_BUS_MASTER;
+                end loop;
                 memDelay <= "00";
                 if bus_m.valid(0) = '1' then
                     comState <= processing;
@@ -277,6 +314,12 @@ begin
                     -- Read/write from XADC via DRP
                     --
                     when X"02" => rw(bus_m,bus_s,comState,drp_p,drp_s);
+
+                    --
+                    -- Test multi-module parsing
+                    --
+                    when X"03" => rw_sub_mod(bus_m,bus_s,comState,subs_bus_m(0),subs_bus_s(0));
+                    when X"04" => rw_sub_mod(bus_m,bus_s,comState,subs_bus_m(1),subs_bus_s(1));
 
                     when others => 
                         comState <= finishing;
