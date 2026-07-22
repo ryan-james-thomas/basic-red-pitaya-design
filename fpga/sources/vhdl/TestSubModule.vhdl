@@ -6,6 +6,9 @@ use work.CustomDataTypes.all;
 use work.AXI_Bus_Package.all;
 
 entity TestSubModule is
+    generic(
+        TOP_ADDR:   t_axi_top_addr
+    );
     port (
         clk     :   in  std_logic;
         aresetn :   in  std_logic;
@@ -33,7 +36,7 @@ begin
         FSM: case(com_state) is
             when idle => 
                 bus_s.resp <= "00";
-                if bus_m.valid(0) = '1' then
+                if bus_m.valid(0) = '1' and compare_top_axi_addr(bus_m,TOP_ADDR) then
                     com_state <= processing;
                 end if;
 

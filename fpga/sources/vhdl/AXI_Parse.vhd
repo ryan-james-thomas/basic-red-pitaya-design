@@ -12,7 +12,8 @@ entity AXI_Parse is
     generic (
         ADDR_WIDTH  :   natural :=  32;
         DATA_WIDTH  :   natural :=  32;
-        OFFSET_ADDR :   unsigned(31 downto 0) :=  X"40000000"
+        OFFSET_ADDR :   unsigned(31 downto 0) :=  X"40000000";
+        TIMEOUT     :   natural :=  125000000
     );
     port (
         --
@@ -66,6 +67,7 @@ end AXI_Parse;
 architecture rtl of AXI_Parse is
     
 signal state    :   unsigned(3 downto 0)    :=  X"0";
+signal count    :   unsigned(31 downto 0);
 
 begin
 
@@ -73,6 +75,7 @@ MainProcess: process(s_axi_aclk,s_axi_aresetn) is
 begin
     if s_axi_aresetn = '0' then
         state <= X"0";
+        count <= (others => '0');
         dataValid_o <= "00";
         addr_o <= (others => '0');
         --
@@ -98,6 +101,7 @@ begin
             -- The first phase of the MOSI process is to wait for a valid address from the master
             --
             when "0000" =>
+                count <= (others => '0'); -- Reset counter during WAIT FOR VALID
                 if s_axi_awvalid = '0' and s_axi_arvalid = '0' then
                     --
                     -- If neither write nor read address valid signal is asserted, then stay in the WAIT FOR VALID phase
@@ -170,6 +174,15 @@ begin
                     else
                         s_axi_bresp <= "11";    --An error occurred in writing data
                     end if;
+                elsif count < TIMEOUT then
+                    -- Count up to timeout while waiting for a response
+                    count <= count + 1;
+                elsif count >= TIMEOUT then
+                    -- If the counter exceeds the timeout, signal an error
+                    state <= state + 1;
+                    dataValid_o <= "00";
+                    s_axi_bvalid <= '1';
+                    s_axi_bresp <= "11";
                 end if;
             
             --
@@ -202,6 +215,15 @@ begin
                     else
                         s_axi_rresp <= "11";
                     end if;
+                elsif count < TIMEOUT then
+                    -- Count up to timeout while waiting for a response
+                    count <= count + 1;
+                elsif count >= TIMEOUT then
+                    -- If the counter exceeds the timeout, signal an error
+                    state <= state + 1;
+                    dataValid_o <= "00";
+                    s_axi_rvalid <= '1';
+                    s_axi_rresp <= "11";
                 end if;
 
             --

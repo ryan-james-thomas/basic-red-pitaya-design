@@ -94,6 +94,9 @@ component PWM_Generator is
 end component;
 
 component TestSubModule is
+    generic(
+        TOP_ADDR:   t_axi_top_addr
+    );
     port (
         clk     :   in  std_logic;
         aresetn :   in  std_logic;
@@ -200,6 +203,9 @@ port map(
 --
 SubModuleGen: for I in 0 to subs_bus_m'length - 1 generate
     SubModuleX: TestSubModule
+    generic map(
+        TOP_ADDR    =>  to_unsigned(I + 3,t_axi_top_addr'length)
+    )
     port map(
         clk     =>  sysClk,
         aresetn =>  aresetn,
@@ -213,8 +219,19 @@ end generate SubModuleGen;
 bus_m.addr <= addr_i;
 bus_m.valid <= dataValid_i;
 bus_m.data <= writeData_i;
-readData_o <= bus_s.data;
-resp_o <= bus_s.resp;
+
+subs_bus_m(0) <= bus_m;
+subs_bus_m(1) <= bus_m;
+
+
+--readData_o <= bus_s.data;
+--resp_o <= bus_s.resp;
+resp_o <= bus_s.resp or subs_bus_s(0).resp or subs_bus_s(1).resp;
+
+readData_o <=   bus_s.data when compare_top_axi_addr(bus_m,X"00") else
+                subs_bus_s(0).data when compare_top_axi_addr(bus_m,X"03") else
+                subs_bus_s(1).data when compare_top_axi_addr(bus_m,X"04") else
+                (others => '0');
 
 m_drp_den <= drp_p.den;
 m_drp_dwe <= drp_p.dwe;
@@ -241,9 +258,9 @@ begin
         memDelay <= (others => '0');
         wea <= "0";
         drp_p <= DRP_BUS_PRIMARY_INIT;
-        for I in 0 to subs_bus_m'length - 1 loop
-            subs_bus_m(I) <= INIT_AXI_BUS_MASTER;
-        end loop;
+--        for I in 0 to subs_bus_m'length - 1 loop
+--            subs_bus_m(I) <= INIT_AXI_BUS_MASTER;
+--        end loop;
     elsif rising_edge(sysClk) then
         FSM: case(comState) is
             --
@@ -254,29 +271,29 @@ begin
                 reset <= '0';
                 drp_p.count <= (others => '0');
                 bus_s.resp <= "00";
-                for I in 0 to subs_bus_m'length - 1 loop
-                    subs_bus_m(I) <= INIT_AXI_BUS_MASTER;
-                end loop;
+--                for I in 0 to subs_bus_m'length - 1 loop
+--                    subs_bus_m(I) <= INIT_AXI_BUS_MASTER;
+--                end loop;
                 memDelay <= "00";
-                if bus_m.valid(0) = '1' then
+                if bus_m.valid(0) = '1' and compare_top_axi_addr(bus_m,X"00") then
                     comState <= processing;
                 end if;
             --
             -- Once a bus request is received, we process based on the address
             --
             when processing =>
-                AddrCase: case(bus_m.addr(31 downto 24)) is
+                AddrCase: case(bus_m.addr(23 downto 16)) is
                     --
                     -- Parameter parsing
                     --
                     when X"00" =>
-                        ParamCase: case(bus_m.addr(23 downto 0)) is
-                            when X"000000" => rw(bus_m,bus_s,comState,triggers);
-                            when X"000004" => rw(bus_m,bus_s,comState,outputReg);
-                            when X"000008" => rw(bus_m,bus_s,comState,dac_o);
-                            when X"00000C" => readOnly(bus_m,bus_s,comState,adcData_i);
-                            when X"000010" => readOnly(bus_m,bus_s,comState,ext_i);
-                            when X"000014" => rw(bus_m,bus_s,comState,pwmReg);
+                        ParamCase: case(bus_m.addr(15 downto 0)) is
+                            when X"0000" => rw(bus_m,bus_s,comState,triggers);
+                            when X"0004" => rw(bus_m,bus_s,comState,outputReg);
+                            when X"0008" => rw(bus_m,bus_s,comState,dac_o);
+                            when X"000C" => readOnly(bus_m,bus_s,comState,adcData_i);
+                            when X"0010" => readOnly(bus_m,bus_s,comState,ext_i);
+                            when X"0014" => rw(bus_m,bus_s,comState,pwmReg);
                             when others => 
                                 comState <= finishing;
                                 bus_s.resp <= "11";
@@ -318,8 +335,8 @@ begin
                     --
                     -- Test multi-module parsing
                     --
-                    when X"03" => rw_sub_mod(bus_m,bus_s,comState,subs_bus_m(0),subs_bus_s(0));
-                    when X"04" => rw_sub_mod(bus_m,bus_s,comState,subs_bus_m(1),subs_bus_s(1));
+--                    when X"03" => rw_sub_mod(bus_m,bus_s,comState,subs_bus_m(0),subs_bus_s(0));
+--                    when X"04" => rw_sub_mod(bus_m,bus_s,comState,subs_bus_m(1),subs_bus_s(1));
 
                     when others => 
                         comState <= finishing;

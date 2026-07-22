@@ -13,16 +13,17 @@ package AXI_Bus_Package is
 --
 -- Defines AXI address and data widths
 --
-constant AXI_ADDR_WIDTH :   natural :=  32;
-constant AXI_DATA_WIDTH :   natural :=  32;
-
+constant AXI_ADDR_WIDTH     :   natural :=  32;
+constant AXI_DATA_WIDTH     :   natural :=  32;
+constant AXI_TOP_ADDR_WIDTH :   natural :=  8;
 --
 -- Defines AXI address and data signals
 --
-subtype t_axi_addr is unsigned(AXI_ADDR_WIDTH-1 downto 0);
-subtype t_axi_data is std_logic_vector(AXI_DATA_WIDTH-1 downto 0);
+subtype t_axi_addr is unsigned(AXI_ADDR_WIDTH - 1 downto 0);
+subtype t_axi_data is std_logic_vector(AXI_DATA_WIDTH - 1 downto 0);
 type t_axi_addr_array is array(natural range <>) of t_axi_addr;
 type t_axi_data_array is array(natural range <>) of t_axi_data;
+subtype t_axi_top_addr is unsigned(AXI_TOP_ADDR_WIDTH - 1 downto 0);
 
 --
 -- Defines a data bus controlled by the master
@@ -59,6 +60,8 @@ constant INIT_AXI_BUS_SLAVE     :   t_axi_bus_slave     :=  (data   =>  (others 
                                                              resp   =>  "00");
 constant INIT_AXI_BUS           :   t_axi_bus           :=  (m      =>  INIT_AXI_BUS_MASTER,
                                                              s      =>  INIT_AXI_BUS_SLAVE);
+
+function compare_top_axi_addr(ARG : t_axi_bus_master; CMP : t_axi_top_addr) return boolean;
 
 procedure rw(
     signal bus_i    :   in      t_axi_bus_master;
@@ -115,6 +118,12 @@ end AXI_Bus_Package;
 --------------------------------------------------------------------------------------------------
 --------------------------------------------------------------------------------------------------
 package body AXI_Bus_Package is
+
+function compare_top_axi_addr(ARG : t_axi_bus_master; CMP : t_axi_top_addr) return boolean is
+    variable RESULT: boolean;
+begin
+    return ARG.addr(ARG.addr'left downto ARG.addr'left - t_axi_top_addr'length + 1) = CMP;
+end compare_top_axi_addr;
 
 procedure rw(
     signal bus_i    :   in      t_axi_bus_master;
