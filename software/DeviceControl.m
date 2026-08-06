@@ -3,6 +3,7 @@ classdef DeviceControl < handle
     %design.  The red-pitaya-interface folder needs to be in your path
     properties
         jumpers         % The input jumper setting, either 'lv' or 'hv'
+        max_dac_voltages% Maximum DAC voltage, depends on RP version and load
     end
     
     properties(SetAccess = immutable)
@@ -34,7 +35,8 @@ classdef DeviceControl < handle
         CONV_HV = 29.3570/2^(DeviceControl.ADC_WIDTH - 1);      % Conversion factor for ADC signals on jumper 'hv' setting
         NUM_PWM = 4;                                            % Number of PWM outputs
         NUM_SLOW_ADC = 4;                                       % Number of "slow" ADCs
-        XADC_ADDRESS_OFFSET = 0x02000000;                       % Address offset for accessing the XADC registers
+        TOP_ADDR = 0x40000000;                                  % Top level address
+        XADC_ADDRESS_OFFSET = 0x00020000;                       % Address offset for accessing the XADC registers
         BLOCK_MEM_ADDRESS_OFFSET = 0x01000000;                  % Address offset for accessing block memory
         BLOCK_MEM_DEPTH = 256;                                  % Depth of block memory
     end
@@ -48,15 +50,17 @@ classdef DeviceControl < handle
             self.conn = ConnectionClient(host_address);
             % Set the jumpers to low voltage (+/- 1 V inputs)
             self.jumpers = 'lv';
+            % Set the maximum DAC voltage to 1 V.
+            self.max_dac_voltages = [1,1];
             %
             % Create registers
             %
-            self.trigReg = DeviceRegister('0',self.conn);
-            self.outputReg = DeviceRegister('4',self.conn);
-            self.dacReg = DeviceRegister('8',self.conn);
-            self.adcReg = DeviceRegister('C',self.conn,true);
-            self.inputReg = DeviceRegister('10',self.conn,true);
-            self.pwmReg = DeviceRegister('14',self.conn);
+            self.trigReg = DeviceRegister('0',self.conn,self.TOP_ADDR);
+            self.outputReg = DeviceRegister('4',self.conn,self.TOP_ADDR);
+            self.dacReg = DeviceRegister('8',self.conn,self.TOP_ADDR);
+            self.adcReg = DeviceRegister('C',self.conn,true,self.TOP_ADDR);
+            self.inputReg = DeviceRegister('10',self.conn,true,self.TOP_ADDR);
+            self.pwmReg = DeviceRegister('14',self.conn,self.TOP_ADDR);
             self.slowADCRegs = DeviceRegister.empty;
             for nn = 1:self.NUM_SLOW_ADC
                 % The physical routing on the Red Pitaya board is a bit
@@ -64,16 +68,15 @@ classdef DeviceControl < handle
                 % switch logic below
                 switch nn
                     case 1
-                        addr_offset = double(0x18);
+                        addr_offset = 0x18;
                     case 2
-                        addr_offset = double(0x10);
+                        addr_offset = 0x10;
                     case 3
-                        addr_offset = double(0x11);
+                        addr_offset = 0x11;
                     case 4
-                        addr_offset = double(0x19);
+                        addr_offset = 0x19;
                 end
-                addr = double(self.XADC_ADDRESS_OFFSET) + addr_offset*4;
-                self.slowADCRegs(nn,1) = DeviceRegister(addr,self.conn,true);
+                self.slowADCRegs(nn,1) = DeviceRegister(addr_offset,self.conn,true,self.TOP_ADDR + self.XADC_ADDRESS_OFFSET);
             end
             %
             % Create DeviceParameter objects
@@ -81,11 +84,11 @@ classdef DeviceControl < handle
             % Fast DACs
             self.dac = DeviceParameter([0,15],self.dacReg,'int16')...
                 .setLimits('lower',-1,'upper',1)...
-                .setFunctions('to',@(x) x*(2^(self.DAC_WIDTH - 1) - 1),'from',@(x) x/(2^(self.DAC_WIDTH - 1) - 1));
+                .setFunctions('to',@(x) x/self.convert_dac_int_to_volts(1),'from',@(x) x*self.convert_dac_int_to_volts(1));
             
             self.dac(2) = DeviceParameter([16,31],self.dacReg,'int16')...
                 .setLimits('lower',-1,'upper',1)...
-                .setFunctions('to',@(x) x*(2^(self.DAC_WIDTH - 1) - 1),'from',@(x) x/(2^(self.DAC_WIDTH - 1) - 1));
+                .setFunctions('to',@(x) x/self.convert_dac_int_to_volts(2),'from',@(x) x*self.convert_dac_int_to_volts(2));
             % Fast ADCS
             self.adc = DeviceParameter([0,15],self.adcReg,'int16')...
                 .setFunctions('to',@(x) self.convert2int(x),'from',@(x) self.convert2volts(x));
@@ -150,34 +153,20 @@ classdef DeviceControl < handle
             p = properties(self);
             d = [];
             for nn = 1:numel(p)
-                % Only DeviceRegister objects are written
-                if isa(self.(p{nn}),'DeviceRegister')
-                    R = self.(p{nn});
-                    if numel(R) == 1
-                        % Read-only registers are ignored
-                        if ~R.read_only
-                            d = [d;self.(p{nn}).getWriteData]; %#ok<*AGROW>
-                        end
-                    else
-                        for row = 1:size(R,1)
-                            for col = 1:size(R,2)
-                                % Read-only registers are ignored
-                                if ~R(row,col).read_only
-                                    d = [d;R(row,col).getWriteData];
-                                end
-                            end
-                        end
-                    end
+                if isa(self.(p{nn}),'DeviceRegister') || isa(self.(p{nn}),'DeviceSubModule')
+                    d = [d;self.(p{nn}).getWriteData]; %#ok<*AGROW>
                 end
             end
 
             d = d';
             d = d(:);
             %
-            % Write every register using the same connection. This speeds
-            % up data transmission by quite a bit
+            % Write every register using the same connection
             %
             self.conn.write(d,'mode','write');
+            if self.conn.header.err
+                error('Connection returned error: %s',self.conn.header.errMsg);
+            end
         end
         
         function self = fetch(self)
@@ -191,30 +180,20 @@ classdef DeviceControl < handle
             % from device
             %
             p = properties(self);
-            pread = {};
             Rread = DeviceRegister.empty;
             d = [];
             for nn = 1:numel(p)
-                % Only read DeviceRegisters
-                if isa(self.(p{nn}),'DeviceRegister')
-                    R = self.(p{nn});   %DeviceRegisters are passed by reference
-                    if numel(R) == 1
-                        d = [d;R.getReadData];
-                        Rread(end + 1) = R;
-                        pread{end + 1} = p{nn};
-                    else
-                        pread{end + 1} = p{nn};
-                        for row = 1:size(R,1)
-                            for col = 1:size(R,2)
-                                d = [d;R(row,col).getReadData];
-                                Rread(end + 1) = R(row,col);
-                            end
-                        end
-                    end
-                    
+                if isa(self.(p{nn}),'DeviceRegister') || isa(self.(p{nn}),'DeviceSubModule')
+                    [dtmp,Rtmp] = self.(p{nn}).getReadData;
+                    d = [d;dtmp];
+                    tmp = [Rread;Rtmp(:)];
+                    Rread = tmp;
                 end
             end
-            self.conn.write(d,'mode','read');
+            self.conn.write(d,'mode','read','print',true);
+            if self.conn.header.err
+                error('Connection returned error: %s',self.conn.header.errMsg);
+            end
             value = self.conn.recvMessage;
             %
             % Parse the received data in the same order as the addresses
@@ -228,7 +207,7 @@ classdef DeviceControl < handle
             %
             p = properties(self);
             for nn = 1:numel(p)
-                if isa(self.(p{nn}),'DeviceParameter')
+                if isa(self.(p{nn}),'DeviceParameter') || isa(self.(p{nn}),'DeviceSubModule')
                     self.(p{nn}).get;
                 end
             end
@@ -258,6 +237,15 @@ classdef DeviceControl < handle
                 c = self.CONV_LV;
             end
             r = x/c;
+        end
+
+        function c = convert_dac_int_to_volts(self,idx)
+            if isscalar(self.max_dac_voltages)
+                v = self.max_dac_voltages;
+            else
+                v = self.max_dac_voltages(idx);
+            end
+            c = v/(2^(self.DAC_WIDTH - 1) - 1);
         end
 
         function data = get_xadc_status(self)
