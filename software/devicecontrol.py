@@ -1,28 +1,43 @@
-# import sys
-# sys.path.append('/home/ryan/Matlab/interfaces/red-pitaya')
-# print(sys.path)
+"""Defines classes for control of the basic Red Pitaya design
 
+Classes
+JumperType(Enum) -- Enumerated type for different input jumper settings
+DeviceControlSubModule(redpitaya.DeviceSubModule) -- Represents the submodules in the basic design
+DeviceControl -- Represents the main design
+"""
 import libserver
 import redpitaya
 from enum import Enum
 
 class JumperType(Enum):
+    """Represents the LV or HV ADC input jumper settings"""
     LV = 0
     HV = 1
 
 class DeviceControlSubModule(redpitaya.DeviceSubModule):
-    def __init__(self, parent, offset):
+    def __init__(self, parent, offset: int):
+        """Creates an instance of the sub modules
+        
+        Arguments
+        parent -- The parent device
+        offset -- The top-level address offset of this module
+        """
         self._parent = parent
         self._offset = offset
 
         self._reg = redpitaya.DeviceRegister(0, self._parent._conn, offset=self._offset)
-
         self.p = redpitaya.DeviceParameter([0, 31], self._reg)
 
     def set_defaults(self):
-        self._reg.value = 0 & 0xFFFFFFFF
+        """Sets the default values"""
+        self.p.set(0)
 
-    def print(self, width=20):
+    def print(self, width: int=20):
+        """Prints a summary of the module's parameters
+        
+        Arguments
+        width: int -- Width of the parameter name field
+        """
         s = self.p.print("Parameter", width, "#010x")
         return s
 
@@ -49,7 +64,12 @@ class DeviceControl:
     BLOCK_MEM_DEPTH = 256
 
     def __init__(self, server_target):
-
+        """Creates an instance of the class
+        
+        Arguments
+        server_target -- A string indicating the server host, or a tuple of
+            (server host name, port)
+        """
         # Create client connection object
         self._conn = libserver.ClientConnection(server_target)
         # Create extra parameters
@@ -89,7 +109,8 @@ class DeviceControl:
                     to_int=lambda x, idx=nn: self.convert_dac_volts_to_int(x, idx),
                     from_int=lambda x, idx=nn: self.convert_dac_int_to_volts(x, idx),
                     lower_limit=-self.max_dac_voltages[nn],
-                    upper_limit=self.max_dac_voltages[nn])
+                    upper_limit=self.max_dac_voltages[nn],
+                    units="V")
         )
 
         self.adcs = redpitaya.DeviceParameterList()
@@ -98,7 +119,8 @@ class DeviceControl:
                 redpitaya.DeviceParameter(
                     [16*nn, 16*(nn + 1) - 1], self._adc_reg, redpitaya.ParamType.INT16,
                     to_int=lambda x, idx=nn: self.convert_adc_volts_to_int(x, idx),
-                    from_int=lambda x, idx=nn: self.convert_adc_int_to_volts(x, idx))
+                    from_int=lambda x, idx=nn: self.convert_adc_int_to_volts(x, idx),
+                    units="V")
         )
 
         self.ext_i = redpitaya.DeviceParameter([0, 7], self._input_reg)
@@ -112,7 +134,8 @@ class DeviceControl:
                     [8*nn, 8*(nn + 1) - 1], self._pwm_reg,
                     to_int=lambda x: x/self.MAX_PWM*(2**self.PWM_WIDTH - 1),
                     from_int=lambda x: x*self.MAX_PWM/(2**self.PWM_WIDTH - 1),
-                    lower_limit=0, upper_limit=self.MAX_PWM)
+                    lower_limit=0, upper_limit=self.MAX_PWM,
+                    units="V")
                 )
 
         self.slow_adcs = redpitaya.DeviceParameterList()
@@ -121,20 +144,27 @@ class DeviceControl:
                 redpitaya.DeviceParameter(
                     [8*nn, 8*(nn + 1) - 1], self._slow_adc_regs[nn],
                     to_int=lambda x: x*2**(self.SLOW_ADC_WIDTH)/self.MAX_SLOW_ADC,
-                    from_int=lambda x: x/2**(self.SLOW_ADC_WIDTH)*self.MAX_SLOW_ADC)
+                    from_int=lambda x: x/2**(self.SLOW_ADC_WIDTH)*self.MAX_SLOW_ADC,
+                    units="V")
                 )
-
+        #
+        # Create sub modules
+        #
         self.sub_module_a = DeviceControlSubModule(self, self.TOP_ADDR + 0x03000000)
         self.sub_module_b = DeviceControlSubModule(self, self.TOP_ADDR + 0x04000000)
 
 
     def set_defaults(self):
+        """Set default values"""
         self.dacs.set(0)
         self.ext_o.set(0)
         self.led_o.set(0)
         self.pwms.set(0)
+        self.sub_module_a.set_defaults()
+        self.sub_module_b.set_defaults()
 
     def upload(self):
+        """Upload configuration to FPGA"""
         d = []
         for p in self.__dict__.values():
             if hasattr(p, "get_write_data"):
@@ -143,6 +173,7 @@ class DeviceControl:
         self._conn.write(d, mode="write")
 
     def fetch(self):
+        """Retrieve configuration from FPGA"""
         d = []
         R = []
         for p in self.__dict__.values():
@@ -160,13 +191,31 @@ class DeviceControl:
                 p.get()
 
 
-    def convert_dac_int_to_volts(self, x, idx):
+    def convert_dac_int_to_volts(self, x: int , idx: int) -> float:
+        """Convert DAC values from integer to volts
+        
+        Arguments
+        x: int -- Integer value to convert
+        idx: int -- DAC to convert from, since max DAC voltages can be DAC-dependent
+        """
         return x/(2**(self.DAC_WIDTH - 1) - 1)*self.max_dac_voltages[idx]
 
-    def convert_dac_volts_to_int(self, x, idx):
-        return x/self.max_dac_voltages[idx]*(2**(self.DAC_WIDTH - 1) - 1)
+    def convert_dac_volts_to_int(self, x: float, idx: int) -> int:
+        """Convert DAC values from volts to an integer
+        
+        Arguments
+        x: float -- Physical value to convert
+        idx: int -- DAC to convert from, since max DAC voltages can be DAC-dependent
+        """
+        return int(x/self.max_dac_voltages[idx]*(2**(self.DAC_WIDTH - 1) - 1))
 
-    def convert_adc_int_to_volts(self, x, idx):
+    def convert_adc_int_to_volts(self, x, idx) -> float:
+        """Convert ADC values from integer to volts
+        
+        Arguments
+        x: int -- Integer value to convert
+        idx: int -- ADC to convert from, since ADC jumper settings can be different
+        """
         match self.jumpers[idx]:
             case JumperType.LV:
                 max_adc_voltage = self.MAX_ADC_LV
@@ -177,7 +226,13 @@ class DeviceControl:
 
         return x/(2**(self.ADC_WIDTH - 1) - 1)*max_adc_voltage
 
-    def convert_adc_volts_to_int(self, x, idx):
+    def convert_adc_volts_to_int(self, x, idx) -> int:
+        """Convert ADC values from volts to an integer
+        
+        Arguments
+        x: float -- Physical value to convert
+        idx: int -- ADC to convert from, since ADC jumper settings can be different
+        """
         match self.jumpers[idx]:
             case JumperType.LV:
                 max_adc_voltage = self.MAX_ADC_LV
@@ -186,9 +241,12 @@ class DeviceControl:
             case _:
                 raise ValueError("Jumper values must be of type 'JumperType'")
 
-        return x/max_adc_voltage*(2**(self.ADC_WIDTH - 1) - 1)
+        return int(x/max_adc_voltage*(2**(self.ADC_WIDTH - 1) - 1))
 
-    def get_xadc_status(self):
+    def get_xadc_status(self) -> dict:
+        """Retrieves the FPGA status via the XADC interface
+        
+        Returns a dict with available properties"""
         reg = redpitaya.DeviceRegister(0, self._conn, read_only=True, offset=self.TOP_ADDR + self.XADC_ADDR_OFFSET)
         volt_conv = lambda x: 3*x/2**16
         info = {
@@ -209,7 +267,12 @@ class DeviceControl:
 
         return data
 
-    def mem_write(self, data : list):
+    def mem_write(self, data: list):
+        """Simple test of writing data to the block memory
+        
+        Arguments:
+        data: list -- integer data to write
+        """
         reg = redpitaya.DeviceRegister(0, self._conn, offset=self.TOP_ADDR + self.BLOCK_MEM_ADDRESS_OFFSET)
         if len(data) > self.BLOCK_MEM_DEPTH:
             raise ValueError("Size of data exceeds block memory depth of {:d}".format(self.BLOCK_MEM_DEPTH))
@@ -220,7 +283,14 @@ class DeviceControl:
             d.extend(reg.get_write_data())
         self._conn.write(d, mode="write")
 
-    def mem_read(self, num_samples : int=BLOCK_MEM_DEPTH):
+    def mem_read(self, num_samples: int=BLOCK_MEM_DEPTH) -> list[int]:
+        """Simple test of reading data from the block memory
+        
+        Arguments:
+        num_samples: int -- Number of samples to read
+
+        Returns a list containing the data read from the block memory
+        """
         reg = redpitaya.DeviceRegister(0, self._conn, offset=self.TOP_ADDR + self.BLOCK_MEM_ADDRESS_OFFSET)
         if num_samples > self.BLOCK_MEM_DEPTH:
             raise ValueError("Number of samples exceeds block memory depth of {:d}".format(self.BLOCK_MEM_DEPTH))
@@ -252,12 +322,12 @@ class DeviceControl:
         s += self.led_o.print("LEDs", width, "#04x")
         s += self.ext_o.print("External output", width, "#04x")
         s += self.ext_i.print("External input", width, "#04x")
-        s += self.dacs[0].print("DAC 0", width, ".3f", "V")
-        s += self.dacs[1].print("DAC 1", width, ".3f", "V")
-        s += self.adcs[0].print("ADC 0", width, ".3f", "V")
-        s += self.adcs[1].print("ADC 1", width, ".3f", "V")
-        s += self.pwms.print("PWM", width, ".3f", "V")
-        s += self.slow_adcs.print("Slow ADC", width, ".3f", "V")
+        s += self.dacs[0].print("DAC 0", width, " .3f")
+        s += self.dacs[1].print("DAC 1", width, " .3f")
+        s += self.adcs[0].print("ADC 0", width, " .3f")
+        s += self.adcs[1].print("ADC 1", width, " .3f")
+        s += self.pwms.print("PWM", width, " .3f")
+        s += self.slow_adcs.print("Slow ADC", width, " .3f")
         s += (
             "\t ----------------------------------\n" \
             "\t Sub Module A\n"
@@ -268,7 +338,6 @@ class DeviceControl:
             "\t Sub Module B\n"
             )
         s += self.sub_module_b.print(width)
-
 
         return s
 
