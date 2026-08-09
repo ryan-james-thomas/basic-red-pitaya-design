@@ -2,4 +2,4 @@
 
 host=$1
 
-scp fpga/basic.bit* software/programs/{*.c,*.h,Makefile,*.sh} software/servers/{*.service,*.sh} $host:/root/basic/
+scp fpga/basic.bit* software/programs/{*.c,Makefile} software/services/{*.service,*.sh} $host:/root/basic/
