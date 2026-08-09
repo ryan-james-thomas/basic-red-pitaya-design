@@ -2,7 +2,7 @@ classdef DeviceControl < handle
     %DEVICECONTROL Defines a class for controlling the basic Red Pitaya
     %design.  The red-pitaya-interface folder needs to be in your path
     properties
-        jumpers         % The input jumper setting, either 'lv' or 'hv'
+        jumpers         % The input jumper settings, a 2-element array of RPJumperSetting
         max_dac_voltages% Maximum DAC voltage, depends on RP version and load
     end
     
@@ -15,6 +15,8 @@ classdef DeviceControl < handle
         led_o           % DeviceParameter object that represents the LED settings
         pwm             % 4-element DeviceParameter array that represents the PWM output values
         slow_adcs       % 4-element DeviceParameter array that represents the slow ADC values
+        sub_module_a    % First sub-module
+        sub_module_b    %Second sub-module
     end
     
     properties(SetAccess = protected)
@@ -31,27 +33,38 @@ classdef DeviceControl < handle
         CLK = 125e6;                                            % Clock frequency
         DAC_WIDTH = 14;                                         % Bit width of DAC signals
         ADC_WIDTH = 14;                                         % Bit width of ADC signals
-        CONV_LV = 1.1851/2^(DeviceControl.ADC_WIDTH - 1);       % Conversion factor for ADC signals on jumper 'lv' setting
-        CONV_HV = 29.3570/2^(DeviceControl.ADC_WIDTH - 1);      % Conversion factor for ADC signals on jumper 'hv' setting
+        MAX_ADC_LV = 1.1851;                                    % Maximum ADC voltage when on 'lv' setting
+        MAX_ADC_HV = 29.3570;                                   % Maximum ADC voltage when on 'hv' setting
+
         NUM_PWM = 4;                                            % Number of PWM outputs
+        MAX_PWM = 1.62;                                         % Maximum PWM voltage output
+        PWM_WIDTH = 8;                                          % PWM bit width
+
         NUM_SLOW_ADC = 4;                                       % Number of "slow" ADCs
+        MAX_SLOW_ADC = (30 + 4.99)/4.99;                        % Maximum voltage on the slow ADCs
+        SLOW_ADC_WIDTH = 16;                                    % Bit-width of the slow ADCs
+
         TOP_ADDR = 0x40000000;                                  % Top level address
         XADC_ADDRESS_OFFSET = 0x00020000;                       % Address offset for accessing the XADC registers
-        BLOCK_MEM_ADDRESS_OFFSET = 0x01000000;                  % Address offset for accessing block memory
+        BLOCK_MEM_ADDRESS_OFFSET = 0x00010000;                  % Address offset for accessing block memory
         BLOCK_MEM_DEPTH = 256;                                  % Depth of block memory
     end
     
     methods
-        function self = DeviceControl(host_address)
+        function self = DeviceControl(host_address, max_dac_voltages)
             %DEVICECONTROL Constructs a DeviceControl object
             %
             %   SELF = DEVICECONTROL(HOST_ADDRESS) Creats a DeviceControl
             %   object with a given host address
             self.conn = ConnectionClient(host_address);
             % Set the jumpers to low voltage (+/- 1 V inputs)
-            self.jumpers = 'lv';
+            self.jumpers = [RPJumperSetting.LV, RPJumperSetting.LV];
             % Set the maximum DAC voltage to 1 V.
-            self.max_dac_voltages = [1,1];
+            if nargin < 2
+                self.max_dac_voltages = [1,1];
+            else
+                self.max_dac_voltages = max_dac_voltages;
+            end
             %
             % Create registers
             %
@@ -82,19 +95,19 @@ classdef DeviceControl < handle
             % Create DeviceParameter objects
             %
             % Fast DACs
-            self.dac = DeviceParameter([0,15],self.dacReg,'int16')...
-                .setLimits('lower',-1,'upper',1)...
-                .setFunctions('to',@(x) x/self.convert_dac_int_to_volts(1),'from',@(x) x*self.convert_dac_int_to_volts(1));
+            self.dac = DeviceParameter([0,15],self.dacReg,'int16','V')...
+                .setLimits('lower',-self.max_dac_voltages(1),'upper',self.max_dac_voltages(1))...
+                .setFunctions('to',@(x) self.convert_dac_volts_to_int(x,1),'from',@(x) self.convert_dac_int_to_volts(x,1));
             
-            self.dac(2) = DeviceParameter([16,31],self.dacReg,'int16')...
-                .setLimits('lower',-1,'upper',1)...
-                .setFunctions('to',@(x) x/self.convert_dac_int_to_volts(2),'from',@(x) x*self.convert_dac_int_to_volts(2));
+            self.dac(2) = DeviceParameter([16,31],self.dacReg,'int16','V')...
+                .setLimits('lower',-self.max_dac_voltages(2),'upper',self.max_dac_voltages(2))...
+                .setFunctions('to',@(x) self.convert_dac_volts_to_int(x,2),'from',@(x) self.convert_dac_int_to_volts(x,2));
             % Fast ADCS
-            self.adc = DeviceParameter([0,15],self.adcReg,'int16')...
-                .setFunctions('to',@(x) self.convert2int(x),'from',@(x) self.convert2volts(x));
+            self.adc = DeviceParameter([0,15],self.adcReg,'int16','V')...
+                .setFunctions('to',@(x) self.convert_adc_volts_to_int(x,1),'from',@(x) self.convert_adc_int_to_volts(x,1));
             
-            self.adc(2) = DeviceParameter([16,31],self.adcReg,'int16')...
-                .setFunctions('to',@(x) self.convert2int(x),'from',@(x) self.convert2volts(x));
+            self.adc(2) = DeviceParameter([16,31],self.adcReg,'int16','V')...
+                .setFunctions('to',@(x) self.convert_adc_volts_to_int(x,2),'from',@(x) self.convert_adc_int_to_volts(x,2));
             % Digital I/O
             self.ext_i = DeviceParameter([0,7],self.inputReg);
             self.ext_o = DeviceParameter([0,7],self.outputReg)...
@@ -104,29 +117,30 @@ classdef DeviceControl < handle
             % PWM outputs
             self.pwm = DeviceParameter.empty;
             for nn = 1:self.NUM_PWM
-                self.pwm(nn) = DeviceParameter(8*(nn - 1) + [0,7],self.pwmReg)...
-                    .setLimits('lower',0,'upper',1.62)...
-                    .setFunctions('to',@(x) x/1.62*255,'from',@(x) x/255*1.62);
+                self.pwm(nn) = DeviceParameter(8*(nn - 1) + [0,7],self.pwmReg,'uint32','V')...
+                    .setLimits('lower',0,'upper',self.MAX_PWM)...
+                    .setFunctions('to',@(x) x/self.MAX_PWM*(2^self.PWM_WIDTH - 1),'from',@(x) x*self.MAX_PWM/(2^self.PWM_WIDTH - 1));
             end
             % "Slow" ADCs.  The conversion functions take into account the
             % voltage dividers on the inputs
             self.slow_adcs = DeviceParameter.empty;
             for nn = 1:self.NUM_SLOW_ADC
-                self.slow_adcs(nn) = DeviceParameter([0,15],self.slowADCRegs(nn))...
-                    .setFunctions('to',@(x) x*2^16*4.99/(30 + 4.99),'from',@(x) x/2^16*(30 + 4.99)/4.99);
+                self.slow_adcs(nn) = DeviceParameter([0,15],self.slowADCRegs(nn),'uint32','V')...
+                    .setFunctions('to',@(x) x*(2^self.SLOW_ADC_WIDTH - 1)/self.MAX_SLOW_ADC,'from',@(x) x/(2^self.SLOW_ADC_WIDTH - 1)*self.MAX_SLOW_ADC);
             end
-            
+            % Sub modules
+            self.sub_module_a = DeviceControlSubModule(self, self.TOP_ADDR + 0x03000000);
+            self.sub_module_b = DeviceControlSubModule(self, self.TOP_ADDR + 0x04000000);
         end
         
         function self = setDefaults(self)
             %SETDEFAULTS Sets default values
-            self.dac(1).set(0);
-            self.dac(2).set(0);
+            self.dac.set(0);
             self.ext_o.set(0);
             self.led_o.set(0);
-            for nn = 1:self.NUM_PWM
-                self.pwm(nn).set(0);
-            end
+            self.pwm.set(0);
+            self.sub_module_a.setDefaults;
+            self.sub_module_b.setDefaults;
         end
         
         function self = check(self)
@@ -165,7 +179,7 @@ classdef DeviceControl < handle
             %
             self.conn.write(d,'mode','write');
             if self.conn.header.err
-                error('Connection returned error: %s',self.conn.header.errMsg);
+                error('Connection returned error: %s',self.conn.header.msg);
             end
         end
         
@@ -190,9 +204,9 @@ classdef DeviceControl < handle
                     Rread = tmp;
                 end
             end
-            self.conn.write(d,'mode','read','print',true);
+            self.conn.write(d,'mode','read');
             if self.conn.header.err
-                error('Connection returned error: %s',self.conn.header.errMsg);
+                error('Connection returned error: %s',self.conn.header.msg);
             end
             value = self.conn.recvMessage;
             %
@@ -213,39 +227,50 @@ classdef DeviceControl < handle
             end
         end
         
-        function r = convert2volts(self,x)
-            %CONVERT2VOLTS Converts an input ADC integer value to volts
+        function r = convert_adc_int_to_volts(self,x,idx)
+            %CONVERT_ADC_INT_TO_VOLTS Converts an input ADC integer value to volts
             %
-            %   R = CONVERT2VOLTS(SELF,X) Converts integer value X to
-            %   volts R
-            if strcmpi(self.jumpers,'hv')
-                c = self.CONV_HV;
-            elseif strcmpi(self.jumpers,'lv')
-                c = self.CONV_LV;
+            %   R = CONVERT_ADC_INT_TO_VOLTS(SELF,X, IDX) Converts integer value X to
+            %   volts R using jumper setting for ADC IDX
+            
+            if self.jumpers(idx) == RPJumperSetting.LV
+                c = self.MAX_ADC_LV;
+            elseif self.jumpers(idx) == RPJumperSetting.HV
+                c = self.MAX_ADC_HV;
             end
-            r = x*c;
-        end
-        
-        function r = convert2int(self,x)
-            %CONVERT2INT Converts an ADC voltage to an integer
-            %
-            %   R = CONVERT2INT(SELF,X) Converts voltage X to integer value
-            %   R
-            if strcmpi(self.jumpers,'hv')
-                c = self.CONV_HV;
-            elseif strcmpi(self.jumpers,'lv')
-                c = self.CONV_LV;
-            end
-            r = x/c;
+            r = x/2^(self.ADC_WIDTH - 1)*c;
         end
 
-        function c = convert_dac_int_to_volts(self,idx)
-            if isscalar(self.max_dac_voltages)
-                v = self.max_dac_voltages;
-            else
-                v = self.max_dac_voltages(idx);
+        function r = convert_adc_volts_to_int(self,x,idx)
+            %CONVERT_ADC_VOLTS_TO_INT Converts an input ADC voltage to integer
+            %
+            %   R = CONVERT_ADC_VOLTS_TO_INT(SELF,X, IDX) Converts voltage X to
+            %   integer R using jumper setting for ADC IDX
+            
+            if self.jumpers(idx) == RPJumperSetting.LV
+                c = self.MAX_ADC_LV;
+            elseif self.jumpers(idx) == RPJumperSetting.HV
+                c = self.MAX_ADC_HV;
             end
-            c = v/(2^(self.DAC_WIDTH - 1) - 1);
+            r = x*2^(self.ADC_WIDTH - 1)/c;
+        end
+
+        function r = convert_dac_int_to_volts(self,x,idx)
+            %CONVERT_DAC_INT_TO_VOLTS Converts an input DAC integer value to volts
+            %
+            %   R = CONVERT_DAC_INT_TO_VOLTS(SELF,X, IDX) Converts integer value X to
+            %   volts R using maximum DAC voltage for DAC IDX
+
+            r = x/2^(self.ADC_WIDTH - 1)*self.max_dac_voltages(idx);
+        end
+
+        function r = convert_dac_volts_to_int(self,x,idx)
+            %CONVERT_DAC_VOLTS_TO_INT Converts an input DAC voltage to integer
+            %
+            %   R = CONVERT_DAC_VOLTS_TO_INT(SELF,X, IDX) Converts voltage X to
+            %   integer R using maximum DAC voltage for DAC IDX
+            
+            r = x*2^(self.ADC_WIDTH - 1)/self.max_dac_voltages(idx);
         end
 
         function data = get_xadc_status(self)
@@ -273,46 +298,46 @@ classdef DeviceControl < handle
             end
         end
 
-        function self = memwrite(self,data)
-            %MEMWRITE Simple, but inefficient, method for testing how to
+        function self = mem_write(self,data)
+            %MEM_WRITE Simple, but inefficient, method for testing how to
             %write to block memory
             %
             %   SELF = MEMWRITE(SELF,DATA) writes DATA to block memory.
             %   DATA should have <= 256 elements.
-            reg = DeviceRegister(0,self.conn);
+            reg = DeviceRegister(0,self.conn,false,self.TOP_ADDR + self.BLOCK_MEM_ADDRESS_OFFSET);
             if numel(data) > self.BLOCK_MEM_DEPTH
                 error('Size of data exceeds block memory depth of %d',self.BLOCK_MEM_DEPTH);
             end
             d = [];
             for nn = 1:numel(data)
-                reg.addr = double(self.BLOCK_MEM_ADDRESS_OFFSET) + (nn - 1)*4;
-                reg.value = uint32(data(nn));
+                reg.addr = (nn - 1)*4;
+                reg.value = typecast(int32(data(nn)),'uint32');
                 d = [d;reg.getWriteData];
             end
             d = d';d = d(:);
             self.conn.write(d,'mode','write');
         end
 
-        function data = memread(self,num_samples)
-            %MEMREAD Simple, but inefficient, method for testing how to
+        function data = mem_read(self,num_samples)
+            %MEM_READ Simple, but inefficient, method for testing how to
             %read from block memory
             %
             %   DATA = MEMREAD(SELF,NUM_SAMPLES) Reads NUM_SAMPLES
             %   sequential addresses from memory and returns them in DATA
-            reg = DeviceRegister(0,self.conn);
+            reg = DeviceRegister(0,self.conn,false,self.TOP_ADDR + self.BLOCK_MEM_ADDRESS_OFFSET);
             if num_samples > self.BLOCK_MEM_DEPTH
                 error('Size of data exceeds block memory depth of %d',self.BLOCK_MEM_DEPTH);
             end
             d = [];
             for nn = 1:num_samples
-                reg.addr = double(self.BLOCK_MEM_ADDRESS_OFFSET) + (nn - 1)*4;
+                reg.addr = (nn - 1)*4;
                 d = [d;reg.getReadData];
             end
             self.conn.write(d,'mode','read');
             value = self.conn.recvMessage;
             data = zeros(numel(value),1);
             for nn = 1:numel(value)
-                data(nn) = value(nn);
+                data(nn) = typecast(value(nn),'int32');
             end
         end
         
@@ -344,6 +369,12 @@ classdef DeviceControl < handle
             for nn = 1:self.NUM_SLOW_ADC
                 self.slow_adcs(nn).print(sprintf('Slow ADC %d',nn),strwidth,'%.3f');
             end
+            fprintf(1,'\t ----------------------------------\n');
+            fprintf(1,'\t Sub-module A\n');
+            self.sub_module_a.print(strwidth);
+            fprintf(1,'\t ----------------------------------\n');
+            fprintf(1,'\t Sub-module B\n');
+            self.sub_module_b.print(strwidth);
         end
         
         

@@ -1,0 +1,17 @@
+[Unit]
+Description=Python3 server for interfacing with RP
+After=network-online.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+Environment=PYTHONUNBUFFERED=1
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/opt/redpitaya/sbin:/opt/redpitaya/bin
+WorkingDirectory=/root/mini-grav/
+ExecStart=/usr/bin/python3 /root/server/appserver.py -s
+#ExecStart=/usr/bin/python3 test.py
+
+[Install]
+WantedBy=multi-user.target

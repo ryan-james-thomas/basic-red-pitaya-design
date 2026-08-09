@@ -1,18 +1,11 @@
 """Defines classes for control of the basic Red Pitaya design
 
 Classes
-JumperType(Enum) -- Enumerated type for different input jumper settings
 DeviceControlSubModule(redpitaya.DeviceSubModule) -- Represents the submodules in the basic design
 DeviceControl -- Represents the main design
 """
 import libserver
 import redpitaya
-from enum import Enum
-
-class JumperType(Enum):
-    """Represents the LV or HV ADC input jumper settings"""
-    LV = 0
-    HV = 1
 
 class DeviceControlSubModule(redpitaya.DeviceSubModule):
     def __init__(self, parent, offset: int):
@@ -63,18 +56,23 @@ class DeviceControl:
     BLOCK_MEM_ADDRESS_OFFSET = 0x00010000
     BLOCK_MEM_DEPTH = 256
 
-    def __init__(self, server_target):
+    def __init__(self, server_target, max_dac_voltages: list=[1,1]):
         """Creates an instance of the class
         
         Arguments
         server_target -- A string indicating the server host, or a tuple of
             (server host name, port)
+        max_dac_voltages: list -- A two-element list indicating the maximum DAC
+            voltages. For Gen 1 boards, this is 1 V. For Gen 2 boards, it is
+            2 V into High-Z and 1 V into 50 Ohms.
         """
         # Create client connection object
         self._conn = libserver.ClientConnection(server_target)
         # Create extra parameters
-        self.jumpers = [JumperType.LV] * 2
-        self.max_dac_voltages = [1,1]
+        self.jumpers = [redpitaya.JumperSetting.LV] * 2
+        if not isinstance(max_dac_voltages, list) or len(max_dac_voltages) != 2:
+            raise ValueError("Maximum DAC voltages must be provided as a two-element list")
+        self.max_dac_voltages = max_dac_voltages
         #
         # Create registers
         #
@@ -217,12 +215,12 @@ class DeviceControl:
         idx: int -- ADC to convert from, since ADC jumper settings can be different
         """
         match self.jumpers[idx]:
-            case JumperType.LV:
+            case redpitaya.JumperSetting.LV:
                 max_adc_voltage = self.MAX_ADC_LV
-            case JumperType.HV:
+            case redpitaya.JumperSetting.HV:
                 max_adc_voltage = self.MAX_ADC_HV
             case _:
-                raise ValueError("Jumper values must be of type 'JumperType'")
+                raise ValueError("Jumper values must be of type 'JumperSetting'")
 
         return x/(2**(self.ADC_WIDTH - 1) - 1)*max_adc_voltage
 
@@ -234,12 +232,12 @@ class DeviceControl:
         idx: int -- ADC to convert from, since ADC jumper settings can be different
         """
         match self.jumpers[idx]:
-            case JumperType.LV:
+            case redpitaya.JumperSetting.LV:
                 max_adc_voltage = self.MAX_ADC_LV
-            case JumperType.HV:
+            case redpitaya.JumperSetting.HV:
                 max_adc_voltage = self.MAX_ADC_HV
             case _:
-                raise ValueError("Jumper values must be of type 'JumperType'")
+                raise ValueError("Jumper values must be of type 'JumperSetting'")
 
         return int(x/max_adc_voltage*(2**(self.ADC_WIDTH - 1) - 1))
 
